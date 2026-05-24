@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 
 class BenchmarkController extends Controller
 {
-    // Singleton preservado pelo Octane entre requests (equivalente ao static do CI4 Worker)
     private static int $counter = 0;
 
     public function health(): JsonResponse
@@ -41,14 +41,28 @@ class BenchmarkController extends Controller
 
     public function memory(): JsonResponse
     {
-        // Laravel Octane preserva singletons entre requests nativamente
-        // O contador cresce como no Cenário C (Worker Mode), sem bridge customizada
         self::$counter++;
 
         return response()->json([
             'counter'  => self::$counter,
             'pid'      => getmypid(),
             'scenario' => env('SCENARIO_NAME', 'scenario-d'),
+        ]);
+    }
+
+    public function db(): JsonResponse
+    {
+        $id = random_int(1, 10000);
+
+        $row = DB::selectOne(
+            'SELECT id, name, value FROM benchmark_items WHERE id = ?',
+            [$id]
+        );
+
+        return response()->json([
+            'item'     => $row,
+            'scenario' => env('SCENARIO_NAME', 'scenario-d'),
+            'pid'      => getmypid(),
         ]);
     }
 }

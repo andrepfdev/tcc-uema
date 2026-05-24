@@ -42,10 +42,10 @@ tcc-uema/
 
 | # | Nome          | Stack                                          | Workers |
 |---|---------------|------------------------------------------------|---------|
-| A | Legacy        | CI4 4.7 + PHP-FPM Alpine + Nginx               | 4       |
-| B | Classic       | CI4 4.7 + FrankenPHP Classic Mode              | —       |
-| C | Vanguard      | CI4 4.7 + FrankenPHP Worker Mode (nativo 4.7+) | 4       |
-| D | Referência    | Laravel + Laravel Octane + FrankenPHP          | 4       |
+| A | Legacy        | CI4 4.7.3 + PHP-FPM Alpine + Nginx               | 4       |
+| B | Classic       | CI4 4.7.3 + FrankenPHP Classic Mode              | —       |
+| C | Vanguard      | CI4 4.7.3 + FrankenPHP Worker Mode (nativo 4.7+) | 4       |
+| D | Referência    | Laravel 13 + Laravel Octane + FrankenPHP       | 4       |
 
 **Budget total por cenário: 1.0 CPU / 512MB RAM** — aplicado ao stack completo:
 - Cenário A: `app-a` (0.85 CPU / 448MB) + `nginx-a` (0.15 CPU / 64MB) = 1.0 / 512MB

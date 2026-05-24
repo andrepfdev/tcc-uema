@@ -1,7 +1,7 @@
 FROM dunglas/frankenphp:latest-php8.3-alpine
 
 # Extensões para Laravel
-RUN install-php-extensions opcache pcntl
+RUN install-php-extensions opcache pcntl pgsql pdo_pgsql
 
 # OPcache — mesmo nível dos outros cenários
 COPY opcache.ini /usr/local/etc/php/conf.d/opcache.ini

@@ -4,7 +4,7 @@
     "type": "project",
     "require": {
         "php": "^8.3",
-        "codeigniter4/framework": "^4.7"
+        "codeigniter4/framework": "^4.7.3"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23"

@@ -1,7 +1,7 @@
 FROM php:8.3-fpm-alpine
 
 # Extensões mínimas para CI4
-RUN docker-php-ext-install opcache
+RUN docker-php-ext-install opcache pgsql pdo_pgsql
 
 # OPcache para benchmark justo (Scenario A recebe todos os otimizadores que tem direito)
 COPY opcache.ini /usr/local/etc/php/conf.d/opcache.ini

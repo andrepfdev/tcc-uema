@@ -140,7 +140,7 @@
       "id": 8,
       "title": "Latência por Endpoint — /health",
       "type": "timeseries",
-      "gridPos": { "x": 0, "y": 22, "w": 8, "h": 6 },
+      "gridPos": { "x": 0, "y": 22, "w": 6, "h": 6 },
       "targets": [
         {
           "expr": "histogram_quantile(0.95, rate(endpoint_health_duration_bucket[30s]))",
@@ -154,7 +154,7 @@
       "id": 9,
       "title": "Latência por Endpoint — /compute",
       "type": "timeseries",
-      "gridPos": { "x": 8, "y": 22, "w": 8, "h": 6 },
+      "gridPos": { "x": 6, "y": 22, "w": 6, "h": 6 },
       "targets": [
         {
           "expr": "histogram_quantile(0.95, rate(endpoint_compute_duration_bucket[30s]))",
@@ -168,11 +168,25 @@
       "id": 10,
       "title": "Latência por Endpoint — /memory",
       "type": "timeseries",
-      "gridPos": { "x": 16, "y": 22, "w": 8, "h": 6 },
+      "gridPos": { "x": 12, "y": 22, "w": 6, "h": 6 },
       "targets": [
         {
           "expr": "histogram_quantile(0.95, rate(endpoint_memory_duration_bucket[30s]))",
           "legendFormat": "/memory p95 (ms)",
+          "datasource": "Prometheus"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    },
+    {
+      "id": 11,
+      "title": "Latência por Endpoint — /db (PostgreSQL)",
+      "type": "timeseries",
+      "gridPos": { "x": 18, "y": 22, "w": 6, "h": 6 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(endpoint_db_duration_bucket[30s]))",
+          "legendFormat": "/db p95 (ms)",
           "datasource": "Prometheus"
         }
       ],

@@ -25,6 +25,9 @@ services:
       CI_ENVIRONMENT: production
     volumes:
       - ./docker/scenario-a/php-fpm.conf:/usr/local/etc/php-fpm.d/www.conf
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - bench-net
     restart: unless-stopped
@@ -73,6 +76,9 @@ services:
       COMPUTE_SIZE: "1000"
       CI_ENVIRONMENT: production
       SERVER_NAME: ":8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - bench-net
     restart: unless-stopped
@@ -99,6 +105,9 @@ services:
       COMPUTE_SIZE: "1000"
       CI_ENVIRONMENT: production
       SERVER_NAME: ":8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - bench-net
     restart: unless-stopped
@@ -126,6 +135,46 @@ services:
       APP_DEBUG: "false"
       OCTANE_SERVER: frankenphp
       SERVER_NAME: ":8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bench-net
+    restart: unless-stopped
+
+  # ===========================================================================
+  # BANCO DE DADOS — PostgreSQL 16
+  # Compartilhado entre todos os cenários (roda um de cada vez via profiles)
+  # Recurso isolado: NÃO conta no orçamento de 1.0 CPU / 512MB dos apps
+  #
+  # Por que PostgreSQL para o benchmark:
+  #   - Modelo process-per-connection (~5-10MB RAM/conexão) torna o custo de
+  #     abrir uma nova conexão mais caro que MySQL (thread-based)
+  #   - Amplifica exatamente o diferencial do Worker Mode (conexão persistente)
+  #   - Cenário A (PHP-FPM): nova conexão PG por request = overhead mensurável
+  #   - Cenário C (Worker Mode): conexão reutilizada = sem overhead de handshake
+  # ===========================================================================
+  postgres:
+    profiles: [scenario-a, scenario-b, scenario-c, scenario-d]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB:       benchmark
+      POSTGRES_USER:     benchmark
+      POSTGRES_PASSWORD: benchmark
+    volumes:
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U benchmark -d benchmark"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "256M"
     networks:
       - bench-net
     restart: unless-stopped
@@ -217,3 +266,4 @@ networks:
 volumes:
   prometheus-data:
   grafana-data:
+  postgres-data:

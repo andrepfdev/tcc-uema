@@ -6,3 +6,4 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health',  [BenchmarkController::class, 'health']);
 Route::get('/compute', [BenchmarkController::class, 'compute']);
 Route::get('/memory',  [BenchmarkController::class, 'memory']);
+Route::get('/db',      [BenchmarkController::class, 'db']);

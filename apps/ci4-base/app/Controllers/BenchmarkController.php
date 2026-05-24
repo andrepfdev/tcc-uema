@@ -50,6 +50,28 @@ class BenchmarkController extends Controller
             'scenario' => getenv('SCENARIO_NAME') ?: 'unknown',
         ]);
     }
+
+    public function db(): void
+    {
+        // Seleciona um registro aleatório para evitar cache do query planner
+        // e forçar o acesso real à conexão com o banco
+        $id = random_int(1, 10000);
+
+        $row = db_connect()
+            ->table('benchmark_items')
+            ->select('id, name, value')
+            ->where('id', $id)
+            ->get()
+            ->getRow();
+
+        $this->response->setHeader('Content-Type', 'application/json');
+        echo json_encode([
+            'item'     => $row,
+            'scenario' => getenv('SCENARIO_NAME') ?: 'unknown',
+            // Inclui o PID para confirmar se a conexão é do mesmo processo (Worker Mode)
+            'pid'      => getmypid(),
+        ]);
+    }
 }
 
 class MemoryState

@@ -61,7 +61,7 @@ no CodeIgniter 4 com FrankenPHP Worker Mode usando o suporte nativo do framework
 - `public/frankenphp-worker.php` — entry point oficial gerado por `php spark worker:install`
 - `app/Config/WorkerMode.php` — configuração de serviços persistentes
 
-### Suporte Nativo do CI4 4.7.0
+### Suporte Nativo do CI4 4.7.3.0
 
 > **Added in version 4.7.0** — Worker Mode is currently experimental.
 > Source: https://codeigniter.com/user_guide/installation/worker_mode.html
@@ -78,7 +78,7 @@ Este comando gera dois arquivos:
 
 ### Como o CI4 Gerencia o Estado entre Requests
 
-O CI4 4.7 resolve os problemas de state leakage automaticamente:
+O CI4 4.7.3 resolve os problemas de state leakage automaticamente:
 
 | Mecanismo             | Comportamento                                                       |
 |-----------------------|---------------------------------------------------------------------|
@@ -120,7 +120,7 @@ sem necessidade de bridge customizada.
 
 **Stack:**
 - `dunglas/frankenphp:latest-php8.3-alpine`
-- Laravel 11 + Laravel Octane 2.x
+- Laravel 13 + Laravel Octane 2.x
 - `php artisan octane:frankenphp --workers=4 --port=8080`
 
 **Por que incluir Laravel:**
@@ -221,6 +221,39 @@ tornando os resultados comparáveis mesmo em máquinas com mais recursos.
 
 ---
 
+## Banco de Dados — PostgreSQL 16
+
+### Por que PostgreSQL (e não MySQL)
+
+O PostgreSQL usa um **processo do SO por conexão** (~5–10 MB RAM cada), tornando o
+custo de abrir uma nova conexão significativamente maior que o MySQL (thread-based).
+
+Isso amplifica exatamente o diferencial que o Worker Mode demonstra:
+
+| Cenário | Comportamento com PostgreSQL |
+|---------|------------------------------|
+| A (PHP-FPM) | Nova conexão PG estabelecida a cada request → overhead de handshake TCP + autenticação + alocação de processo no servidor |
+| B (FrankenPHP Classic) | Mesmo comportamento do A — sem persistência de conexão |
+| C (FrankenPHP Worker) | Conexão estabelecida uma vez no bootstrap, reutilizada em todos os requests subsequentes |
+| D (Laravel Octane) | Mesmo comportamento do C — Octane gerencia reconexão automaticamente |
+
+### Tabela de benchmark
+
+```sql
+CREATE TABLE benchmark_items (
+    id          SERIAL PRIMARY KEY,
+    name        VARCHAR(100),
+    value       INTEGER,
+    description TEXT
+);
+-- 10.000 registros pré-populados via docker/postgres/init.sql
+```
+
+A query usa `WHERE id = random_int(1, 10000)` — ID aleatório por request
+para evitar que o cache do query planner oculte o custo real de conexão.
+
+---
+
 ## Endpoints de Teste
 
 ### `GET /health`
@@ -239,6 +272,22 @@ tornando os resultados comparáveis mesmo em máquinas com mais recursos.
 - Propósito: demonstrar persistência de estado no Worker Mode
 - Em PHP-FPM/Classic: counter sempre retorna 1 (sem estado)
 - Em Worker Mode: counter cresce continuamente
+
+### `GET /db`
+- Executa `SELECT id, name, value FROM benchmark_items WHERE id = ?` com ID aleatório
+- Retorna o item + PID do processo
+- Propósito: **demonstrar persistência de conexão PostgreSQL no Worker Mode**
+- Em PHP-FPM/Classic: nova conexão PG a cada request
+- Em Worker Mode: conexão reutilizada — apenas o tempo de query é pago
+
+### Distribuição no load test (`k6/load.js`)
+
+| Endpoint  | Peso | O que mede |
+|-----------|------|------------|
+| `/health` | 10%  | Overhead base da stack |
+| `/compute`| 30%  | Throughput CPU-bound |
+| `/memory` | 30%  | Persistência de estado em memória |
+| `/db`     | 30%  | Persistência de conexão PG |
 
 ---
 
