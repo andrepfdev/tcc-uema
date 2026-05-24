@@ -54,15 +54,18 @@ class BenchmarkController extends Controller
     {
         $id = random_int(1, 10000);
 
+        // pg_backend_pid() incluído na mesma query — sem round-trip extra.
+        // Mesmo papel do endpoint /memory: prova persistência, mas agora
+        // no nível da conexão PostgreSQL em vez do estado PHP em memória.
         $row = DB::selectOne(
-            'SELECT id, name, value FROM benchmark_items WHERE id = ?',
+            'SELECT id, name, value, pg_backend_pid() AS pg_pid FROM benchmark_items WHERE id = ?',
             [$id]
         );
 
         return response()->json([
             'item'     => $row,
+            'php_pid'  => getmypid(),
             'scenario' => env('SCENARIO_NAME', 'scenario-d'),
-            'pid'      => getmypid(),
         ]);
     }
 }

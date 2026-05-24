@@ -53,23 +53,24 @@ class BenchmarkController extends Controller
 
     public function db(): void
     {
-        // Seleciona um registro aleatório para evitar cache do query planner
-        // e forçar o acesso real à conexão com o banco
         $id = random_int(1, 10000);
 
+        // pg_backend_pid() retorna o PID do processo PostgreSQL que serve esta conexão.
+        // Worker Mode (C, D): pg_pid constante = mesma conexão reutilizada entre requests.
+        // PHP-FPM/Classic (A, B): pg_pid varia = nova conexão estabelecida por request.
+        // Incluído na mesma query — sem round-trip extra.
         $row = db_connect()
-            ->table('benchmark_items')
-            ->select('id, name, value')
-            ->where('id', $id)
-            ->get()
+            ->query(
+                'SELECT id, name, value, pg_backend_pid() AS pg_pid FROM benchmark_items WHERE id = ?',
+                [$id]
+            )
             ->getRow();
 
         $this->response->setHeader('Content-Type', 'application/json');
         echo json_encode([
             'item'     => $row,
+            'php_pid'  => getmypid(),
             'scenario' => getenv('SCENARIO_NAME') ?: 'unknown',
-            // Inclui o PID para confirmar se a conexão é do mesmo processo (Worker Mode)
-            'pid'      => getmypid(),
         ]);
     }
 }

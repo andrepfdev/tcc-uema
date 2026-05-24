@@ -274,11 +274,27 @@ para evitar que o cache do query planner oculte o custo real de conexão.
 - Em Worker Mode: counter cresce continuamente
 
 ### `GET /db`
-- Executa `SELECT id, name, value FROM benchmark_items WHERE id = ?` com ID aleatório
-- Retorna o item + PID do processo
+- Executa `SELECT id, name, value, pg_backend_pid() AS pg_pid FROM benchmark_items WHERE id = ?`
+- ID aleatório por request — evita cache do query planner
+- `pg_backend_pid()` incluído na **mesma query** (sem round-trip extra)
 - Propósito: **demonstrar persistência de conexão PostgreSQL no Worker Mode**
-- Em PHP-FPM/Classic: nova conexão PG a cada request
-- Em Worker Mode: conexão reutilizada — apenas o tempo de query é pago
+
+**O campo `pg_pid` na resposta é a prova direta nos dados do TCC:**
+
+| Cenário | `pg_pid` entre requests | Interpretação |
+|---------|------------------------|---------------|
+| A (PHP-FPM) | Varia | Nova conexão PG a cada request → novo processo backend |
+| B (FrankenPHP Classic) | Varia | Idem ao A |
+| C (FrankenPHP Worker) | Constante por worker | Mesma conexão reutilizada — apenas a query é paga |
+| D (Laravel Octane) | Constante por worker | Idem ao C |
+
+**Por que `pConnect = false` nos Cenários A e B:**
+A PDO do PHP suporta "persistent connections" (`PDO::ATTR_PERSISTENT`), que também
+reusam conexões entre requests dentro do mesmo processo FPM. Para que a comparação
+seja justa — testando a diferença arquitetural e não uma configuração de PDO — o CI4
+é configurado com `database.default.pConnect = false` explicitamente. Sem isso,
+um leitor poderia questionar se o ganho do Worker Mode já não estaria disponível
+via `pConnect` no PHP-FPM comum.
 
 ### Distribuição no load test (`k6/load.js`)
 
