@@ -1,0 +1,36 @@
+{
+    "name": "tcc-uema/ci4-benchmark",
+    "description": "App de benchmark CI4 para TCC UEMA",
+    "type": "project",
+    "require": {
+        "php": "^8.3",
+        "codeigniter4/framework": "^4.7"
+    },
+    "require-dev": {
+        "fakerphp/faker": "^1.23"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Config\\": "app/Config/"
+        },
+        "exclude-from-classmap": [
+            "**/Database/Migrations/**"
+        ]
+    },
+    "scripts": {
+        "post-update-cmd": [
+            "CodeIgniter\\ComposerScripts::postUpdate"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "allow-plugins": {
+            "codeigniter4/devkit": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

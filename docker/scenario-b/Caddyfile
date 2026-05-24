@@ -1,0 +1,19 @@
+{
+    # FrankenPHP modo Classic — sem diretiva worker
+    # Cada request inicia um novo contexto PHP (equivalente ao PHP-FPM)
+    # Usado para isolar o ganho do Worker Mode vs o motor FrankenPHP em si
+    frankenphp
+    admin off
+}
+
+:8080 {
+    root * /app/public
+
+    # Modo Classic: php_server sem worker = contexto PHP por request
+    php_server
+
+    # Sem logs de acesso (reduz I/O nas medições)
+    log {
+        output discard
+    }
+}

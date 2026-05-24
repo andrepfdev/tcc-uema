@@ -1,0 +1,36 @@
+# FrankenPHP Worker Mode — CodeIgniter 4.7+ (suporte nativo)
+# Gerado via: php spark worker:install
+# Ref: https://codeigniter.com/user_guide/installation/worker_mode.html
+
+{
+    frankenphp {
+        worker {
+            # Entry point oficial do CI4 Worker Mode (gerado pelo spark)
+            file public/frankenphp-worker.php
+
+            # 4 workers — mesmo número de pm.max_children do Cenário A (PHP-FPM)
+            # Variável controlada para comparação justa
+            num 4
+        }
+    }
+
+    admin off
+}
+
+:8080 {
+    root * /app/public
+
+    # Compressão (melhora throughput em respostas JSON grandes)
+    encode zstd br gzip
+
+    php_server {
+        try_files {path} frankenphp-worker.php
+    }
+
+    file_server
+
+    # Sem logs de acesso — elimina I/O de disco das medições
+    log {
+        output discard
+    }
+}

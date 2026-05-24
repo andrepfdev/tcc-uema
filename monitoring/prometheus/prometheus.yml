@@ -1,0 +1,24 @@
+global:
+  scrape_interval:     5s
+  evaluation_interval: 5s
+  scrape_timeout:      4s
+
+scrape_configs:
+
+  # cAdvisor — métricas de CPU e RAM dos containers por cenário
+  - job_name: cadvisor
+    static_configs:
+      - targets: ['cadvisor:8080']
+    metric_relabel_configs:
+      # Mantém apenas métricas relevantes para o TCC (reduz cardinalidade)
+      - source_labels: [__name__]
+        regex: 'container_(cpu_usage_seconds_total|memory_usage_bytes|network_.*)'
+        action: keep
+
+  # Prometheus auto-monitoramento
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+
+# k6 envia métricas via remote_write (habilitado com --web.enable-remote-write-receiver)
+# Não é necessário scrape config aqui — k6 faz push diretamente para o endpoint
