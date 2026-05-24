@@ -57,7 +57,7 @@ echo " Teste:    ${TEST}"
 echo " Data/hora: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "======================================================================"
 
-# --- Passo 1: Derrubar qualquer cenário em execução ---
+# --- Passo 1: Derrubar qualquer cenário em execução e limpar métricas anteriores ---
 echo ""
 echo "[1/6] Derrubando cenários anteriores..."
 docker compose \
@@ -66,6 +66,18 @@ docker compose \
   --profile scenario-c \
   --profile scenario-d \
   down --remove-orphans 2>/dev/null || true
+
+# Remove o volume do Prometheus para garantir que cada cenário comece com
+# TSDB limpo. Sem isso, métricas de cenários anteriores ficam no banco e
+# podem confundir a análise — especialmente em queries PromQL sem filtro de tempo.
+# O grafana-data e postgres-data são preservados intencionalmente:
+#   - grafana-data: dashboards e datasources provisionados não precisam resetar
+#   - postgres-data: tabela read-only, dados determinísticos, init.sql já rodou
+PROMETHEUS_VOLUME="$(basename "$(pwd)")_prometheus-data"
+if docker volume inspect "$PROMETHEUS_VOLUME" &>/dev/null; then
+  docker volume rm "$PROMETHEUS_VOLUME" > /dev/null
+  echo "   Volume do Prometheus limpo (${PROMETHEUS_VOLUME})."
+fi
 
 # --- Passo 2: Limpar cache do sistema operacional ---
 # Crítico para isolar os benchmarks: evita que resultados do cenário anterior
@@ -145,6 +157,7 @@ docker compose --profile "$PROFILE" run --rm k6 \
   --out "experimental-prometheus-rw=${TARGET_URL}" \
   --summary-export /scripts/../results/last-run.json \
   -e TARGET_URL="$TARGET_URL" \
+  -e SCENARIO_NAME="$PROFILE" \
   "/scripts/${TEST}.js" \
   | tee "${RESULTS_FILE%.json}.txt"
 

@@ -13,6 +13,12 @@ export const options = {
   vus:      1,
   duration: '1m',
 
+  // Tag global: todas as métricas enviadas ao Prometheus carregam o label `scenario`.
+  // Permite filtrar por cenário no Grafana mesmo com o TSDB acumulando múltiplos runs.
+  tags: {
+    scenario: __ENV.SCENARIO_NAME || 'unknown',
+  },
+
   thresholds: {
     http_req_failed:             ['rate<0.01'],
     http_req_duration:           ['p(95)<500'],

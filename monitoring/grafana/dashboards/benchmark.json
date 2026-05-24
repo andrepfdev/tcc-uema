@@ -6,6 +6,21 @@
   "refresh": "5s",
   "time": { "from": "now-15m", "to": "now" },
   "timezone": "browser",
+  "templating": {
+    "list": [
+      {
+        "name": "scenario",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(k6_http_reqs_total, scenario)",
+        "label": "Cenário",
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "refresh": 2
+      }
+    ]
+  },
   "panels": [
     {
       "id": 1,
@@ -14,7 +29,7 @@
       "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
       "targets": [
         {
-          "expr": "rate(k6_http_reqs_total[30s])",
+          "expr": "rate(k6_http_reqs_total{scenario=~\"$scenario\"}[30s])",
           "legendFormat": "RPS",
           "datasource": "Prometheus"
         }
