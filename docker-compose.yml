@@ -194,6 +194,7 @@ services:
     image: grafana/k6:latest
     volumes:
       - ./k6:/scripts
+      - ./results:/results
     environment:
       K6_PROMETHEUS_RW_SERVER_URL: http://prometheus:9090/api/v1/write
       K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM: "true"

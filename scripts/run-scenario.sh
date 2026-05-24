@@ -150,21 +150,26 @@ echo ""
 
 RESULTS_DIR="$(dirname "$0")/../results"
 mkdir -p "$RESULTS_DIR"
-RESULTS_FILE="${RESULTS_DIR}/scenario-${SCENARIO}-${TEST}-$(date '+%Y%m%d_%H%M%S').json"
+TIMESTAMP="$(date '+%Y%m%d_%H%M%S')"
+RESULTS_TXT="/results/scenario-${SCENARIO}-${TEST}-${TIMESTAMP}.txt"
+DASHBOARD_HTML="/results/dashboard-${PROFILE}-${TEST}-${TIMESTAMP}.html"
 
-docker compose --profile "$PROFILE" run --rm k6 \
-  run \
-  --out "experimental-prometheus-rw=${TARGET_URL}" \
-  --summary-export /scripts/../results/last-run.json \
+docker compose --profile "$PROFILE" run --rm \
+  -e K6_WEB_DASHBOARD=true \
+  -e K6_WEB_DASHBOARD_EXPORT="$DASHBOARD_HTML" \
+  k6 run \
+  --out experimental-prometheus-rw \
+  --summary-export /results/last-run.json \
   -e TARGET_URL="$TARGET_URL" \
   -e SCENARIO_NAME="$PROFILE" \
   "/scripts/${TEST}.js" \
-  | tee "${RESULTS_FILE%.json}.txt"
+  | tee "${RESULTS_DIR}/scenario-${SCENARIO}-${TEST}-${TIMESTAMP}.txt"
 
 echo ""
 echo "======================================================================"
 echo " Teste concluído!"
-echo " Resultados: ${RESULTS_FILE%.json}.txt"
+echo " Resultados: ${RESULTS_DIR}/scenario-${SCENARIO}-${TEST}-${TIMESTAMP}.txt
+ Dashboard:  ${RESULTS_DIR}/dashboard-${PROFILE}-${TEST}-${TIMESTAMP}.html"
 echo " Grafana:    http://localhost:3000"
 echo " Prometheus: http://localhost:9090"
 echo "======================================================================"
