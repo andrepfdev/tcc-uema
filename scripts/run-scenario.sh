@@ -126,7 +126,7 @@ echo "[5/6] Aguardando ${TARGET_HOST} responder em /health..."
 MAX_ATTEMPTS=30
 ATTEMPT=0
 until docker compose --profile "$PROFILE" run --rm --no-deps k6 \
-  run --quiet --no-summary \
+  run --quiet \
   --duration 1s --vus 1 \
   -e TARGET_URL="$TARGET_URL" \
   -e SCRIPT=smoke \
