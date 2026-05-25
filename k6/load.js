@@ -19,7 +19,7 @@ import { testHealth, testCompute, testMemory, testDb } from './lib/endpoints.js'
 export const options = {
   stages: [
     { duration: '2m',  target: 10  },  // aquecimento
-    { duration: '3m',  target: 100 },  // rampa de carga
+    { duration: '2m',  target: 100 },  // rampa de carga
     { duration: '10m', target: 100 },  // pico sustentado
     { duration: '1m',  target: 0   },  // desaceleração
   ],
