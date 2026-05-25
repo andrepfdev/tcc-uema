@@ -63,11 +63,19 @@ Endpoints de teste (idênticos nos 4 cenários):
 
 ## Execução Rápida
 
-### 1. Build das imagens
+### 1. Primeiro uso — Setup inicial (apenas uma vez)
+
+Os diretórios `apps/ci4-base/` e `apps/laravel-octane/` já contêm os arquivos customizados
+do TCC (controllers, configs, rotas). O `composer install` roda **dentro do Docker** durante
+o `build` — não é necessário instalar PHP ou Composer na máquina host.
 
 ```bash
+# Requer apenas: Docker + Docker Compose
 docker compose build
 ```
+
+> **Nota:** O primeiro build baixa as imagens base e compila as extensões PHP — pode demorar
+> alguns minutos dependendo da conexão.
 
 ### 2. Rodar um cenário completo
 

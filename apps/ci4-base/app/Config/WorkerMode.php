@@ -2,19 +2,23 @@
 
 namespace Config;
 
-use CodeIgniter\Config\WorkerMode as BaseWorkerMode;
-
-class WorkerMode extends BaseWorkerMode
+/**
+ * WorkerMode — Configuração do FrankenPHP Worker Mode para CI4 4.7+
+ *
+ * Substitui a classe padrão do framework (vendor/codeigniter4/framework/app/Config/WorkerMode.php).
+ * CI4 usa a versão do app/ quando ela existe.
+ *
+ * Nota sobre 'database': intencionalmente OMITIDO de $persistentServices.
+ * O service container é resetado por request (isolamento de estado),
+ * mas a conexão PDO é gerenciada pelo DatabaseConfig separadamente
+ * e persiste automaticamente no Worker Mode (conexão TCP reutilizada,
+ * mas transações isoladas por request).
+ */
+class WorkerMode
 {
     /**
      * Serviços que sobrevivem entre requests.
-     * Os não listados aqui são destruídos após cada request (state leakage prevention).
-     *
-     * Nota sobre 'database': intencionalmente OMITIDO desta lista.
-     * O service container é resetado por request (isolamento de estado),
-     * mas a conexão PDO subjacente é gerenciada pelo DatabaseConfig separadamente
-     * e persiste automaticamente entre requests no Worker Mode.
-     * Isso significa: isolamento de transação por request + reuso de conexão TCP.
+     * Os não listados são destruídos após cada request (state leakage prevention).
      *
      * @var list<string>
      */
@@ -30,7 +34,7 @@ class WorkerMode extends BaseWorkerMode
     ];
 
     /**
-     * Event listeners a serem removidos entre requests.
+     * Event listeners a remover entre requests.
      * Necessário apenas quando listeners são registrados dentro de callbacks de outros eventos.
      *
      * @var list<string>
