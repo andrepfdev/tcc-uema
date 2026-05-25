@@ -1,10 +1,12 @@
 FROM php:8.3-fpm-alpine
 
-# Extensões mínimas para CI4
-RUN docker-php-ext-install opcache pgsql pdo_pgsql
+# icu-dev: necessário para ext-intl (requerida pelo CI4)
+# libpq-dev: necessário para ext-pgsql/pdo_pgsql
+RUN apk add --no-cache icu-dev libpq-dev \
+    && docker-php-ext-install opcache intl pgsql pdo_pgsql
 
 # OPcache para benchmark justo (Scenario A recebe todos os otimizadores que tem direito)
-COPY opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+COPY docker/scenario-a/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
 # Instalar composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -12,10 +14,10 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 # Copiar código da aplicação
-COPY ../../apps/ci4-base/ .
+COPY apps/ci4-base/ .
 
 # Instalar dependências
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Permissões de escrita para o CI4
 RUN mkdir -p writable/{cache,logs,session,uploads,debugbar} \

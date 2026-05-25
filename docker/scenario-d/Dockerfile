@@ -4,7 +4,7 @@ FROM dunglas/frankenphp:latest-php8.3-alpine
 RUN install-php-extensions opcache pcntl pgsql pdo_pgsql
 
 # OPcache — mesmo nível dos outros cenários
-COPY opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+COPY docker/scenario-d/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
 # Instalar composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -12,10 +12,10 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 
 # Copiar app Laravel
-COPY ../../apps/laravel-octane/ .
+COPY apps/laravel-octane/ .
 
 # Instalar dependências
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN composer update --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Otimizações de produção do Laravel
 RUN php artisan config:cache \

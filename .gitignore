@@ -1,0 +1,22 @@
+# Dependências PHP (geradas pelo scaffold.sh ou docker build)
+apps/*/vendor/
+apps/*/node_modules/
+
+# CI4 — diretório de escrita (logs, cache, sessões)
+apps/ci4-base/writable/
+
+# Laravel — storage e cache gerado
+apps/laravel-octane/storage/logs/
+apps/laravel-octane/bootstrap/cache/*.php
+
+# Resultados dos benchmarks (gerados pelo run-scenario.sh)
+results/*.txt
+results/*.json
+results/*.html
+
+# Docker volumes e temporários
+.docker-volumes/
+
+# Ambiente local
+.env.local
+*.DS_Store
