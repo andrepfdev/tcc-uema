@@ -18,6 +18,9 @@ COPY apps/ci4-base/ .
 # Instalar dependências (CI4 >= 4.7 para suporte nativo ao Worker Mode)
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
+# Gera public/frankenphp-worker.php via comando oficial do CI4
+RUN php spark worker:install --no-interaction
+
 # Permissões de escrita para o CI4
 RUN mkdir -p writable/{cache,logs,session,uploads,debugbar} \
     && chmod -R 777 writable/
