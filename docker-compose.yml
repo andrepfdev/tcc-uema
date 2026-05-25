@@ -192,6 +192,7 @@ services:
   k6:
     profiles: [scenario-a, scenario-b, scenario-c, scenario-d]
     image: grafana/k6:latest
+    user: root
     volumes:
       - ./k6:/scripts
       - ./results:/results
