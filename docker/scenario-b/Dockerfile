@@ -1,4 +1,7 @@
-FROM dunglas/frankenphp:latest-php8.3-alpine
+FROM dunglas/frankenphp:latest-php8.3
+
+# git necessário para o Composer em imagens Debian
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
 
 # Extensões para CI4
 RUN install-php-extensions opcache intl pgsql pdo_pgsql

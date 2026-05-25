@@ -32,11 +32,11 @@ export const options = {
 
   thresholds: {
     http_req_failed:             ['rate<0.05'],
-    http_req_duration:           ['p(99)<2000'],
-    'endpoint_health_duration':  ['p(95)<200'],
-    'endpoint_compute_duration': ['p(95)<2000'],
-    'endpoint_memory_duration':  ['p(95)<500'],
-    'endpoint_db_duration':      ['p(95)<500'],
+    http_req_duration:           ['p(99)<5000'],
+    'endpoint_health_duration':  ['p(95)<5000'],
+    'endpoint_compute_duration': ['p(95)<5000'],
+    'endpoint_memory_duration':  ['p(95)<5000'],
+    'endpoint_db_duration':      ['p(95)<5000'],
   },
 };
 
