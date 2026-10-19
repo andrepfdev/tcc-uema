@@ -12,8 +12,8 @@ Antes de cada execução, o cache do SO é limpo para garantir medições indepe
 **Objetivo:** Baseline da arquitetura PHP tradicional em produção.
 
 **Stack:**
-- `php:8.3-fpm-alpine` com OPcache
-- `nginx:alpine` como reverse proxy
+- `php:8.3.35-fpm-trixie` (Debian 13) com OPcache
+- `nginx:1.31.7-trixie` (Debian 13) como reverse proxy
 - Pool FPM: `pm=static`, `pm.max_children=4`
 
 **Comportamento do endpoint `/memory`:**
@@ -36,7 +36,7 @@ DI container, roteamento, instanciação de serviços.
 FrankenPHP Classic é um substituto drop-in do PHP-FPM.
 
 **Stack:**
-- `dunglas/frankenphp:latest-php8.3-alpine`
+- `dunglas/frankenphp:1.13.0-php8.3.35` (Debian 13)
 - Caddyfile com `php_server` **sem** diretiva `worker`
 - Cada request: novo contexto PHP (sem estado persistente)
 
@@ -56,7 +56,7 @@ Idêntico ao Cenário A — sem persistência de estado.
 no CodeIgniter 4 com FrankenPHP Worker Mode usando o suporte nativo do framework.
 
 **Stack:**
-- `dunglas/frankenphp:latest-php8.3-alpine`
+- `dunglas/frankenphp:1.13.0-php8.3.35` (Debian 13)
 - Caddyfile com `worker { file public/frankenphp-worker.php; num 4 }`
 - `public/frankenphp-worker.php` — entry point oficial gerado por `php spark worker:install`
 - `app/Config/WorkerMode.php` — configuração de serviços persistentes
@@ -119,7 +119,7 @@ O contador crescente prova que o estado em memória persiste entre requests.
 sem necessidade de bridge customizada.
 
 **Stack:**
-- `dunglas/frankenphp:latest-php8.3-alpine`
+- `dunglas/frankenphp:1.13.0-php8.3.35` (Debian 13)
 - Laravel 13 + Laravel Octane 2.x
 - `php artisan octane:frankenphp --workers=4 --port=8080`
 

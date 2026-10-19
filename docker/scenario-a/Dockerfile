@@ -1,9 +1,12 @@
-FROM php:8.3.35-fpm-alpine@sha256:454b11c8907e32878ce92e87b13c14e1bbe6e1b10f4f96d4a19c9b62ec675d41
+FROM php:8.3.35-fpm-trixie@sha256:ed67b5fcd7600614dd651621a04214fbe16d373262cb31eb50bc224c18cf0e88
 
-# icu-dev: necessário para ext-intl (requerida pelo CI4)
+# libicu-dev: necessário para ext-intl (requerida pelo CI4)
 # libpq-dev: necessário para ext-pgsql/pdo_pgsql
-RUN apk add --no-cache icu-dev libpq-dev git unzip \
-    && docker-php-ext-install opcache intl pgsql pdo_pgsql
+# git/unzip: necessários para o Composer
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libicu-dev libpq-dev git unzip \
+    && docker-php-ext-install opcache intl pgsql pdo_pgsql \
+    && rm -rf /var/lib/apt/lists/*
 
 # OPcache para benchmark justo (Scenario A recebe todos os otimizadores que tem direito)
 COPY docker/scenario-a/opcache.ini /usr/local/etc/php/conf.d/opcache.ini

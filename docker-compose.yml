@@ -1,7 +1,7 @@
 services:
 
   # ===========================================================================
-  # CENÁRIO A — Legacy: CodeIgniter 4 + PHP-FPM (Alpine) + Nginx
+  # CENÁRIO A — Legacy: CodeIgniter 4 + PHP-FPM + Nginx (base Debian 13, igual aos demais)
   # Topologia real de produção PHP tradicional
   # ===========================================================================
   app-a:
@@ -34,7 +34,7 @@ services:
 
   nginx-a:
     profiles: [scenario-a]
-    image: nginx:alpine
+    image: nginx:1.31.7-trixie@sha256:bc4cad49969aaf95eb4eecec5572846f86e59f1e8332aba36ed64b91aff8b724
     ports:
       - "${BENCH_PORT:-8080}:8080"
     deploy:

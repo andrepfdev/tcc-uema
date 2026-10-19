@@ -42,7 +42,7 @@ tcc-uema/
 
 | # | Nome          | Stack                                          | Workers |
 |---|---------------|------------------------------------------------|---------|
-| A | Legacy        | CI4 4.7.3 + PHP-FPM Alpine + Nginx               | 4       |
+| A | Legacy        | CI4 4.7.3 + PHP-FPM + Nginx (Debian 13)          | 4       |
 | B | Classic       | CI4 4.7.3 + FrankenPHP Classic Mode              | —       |
 | C | Vanguard      | CI4 4.7.3 + FrankenPHP Worker Mode (nativo 4.7+) | 4       |
 | D | Referência    | Laravel 13 + Laravel Octane + FrankenPHP       | 4       |
