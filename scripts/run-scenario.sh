@@ -30,13 +30,13 @@ if [[ -z "$SCENARIO" ]]; then
   exit 1
 fi
 
-if [[ ! "$SCENARIO" =~ ^[abcd]$ ]]; then
-  echo "Erro: cenário inválido '$SCENARIO'. Use: a, b, c, ou d"
+if [[ ! "$SCENARIO" =~ ^[abcde]$ ]]; then
+  echo "Erro: cenário inválido '$SCENARIO'. Use: a, b, c, d ou e"
   exit 1
 fi
 
-if [[ ! "$TEST" =~ ^(smoke|load)$ ]]; then
-  echo "Erro: teste inválido '$TEST'. Use: smoke ou load"
+if [[ ! "$TEST" =~ ^(smoke|load|long)$ ]]; then
+  echo "Erro: teste inválido '$TEST'. Use: smoke, load ou long"
   exit 1
 fi
 
@@ -65,6 +65,7 @@ docker compose \
   --profile scenario-b \
   --profile scenario-c \
   --profile scenario-d \
+  --profile scenario-e \
   down --remove-orphans 2>/dev/null || true
 
 # Remove o volume do Prometheus para garantir que cada cenário comece com
@@ -85,25 +86,24 @@ fi
 if [[ "$NO_CACHE_CLEAR" == false ]]; then
   echo ""
   echo "[2/6] Limpando cache do sistema operacional (page cache, dentries, inodes)..."
-
   if [[ "$(uname)" == "Linux" ]]; then
-    if [[ -w /proc/sys/vm/drop_caches ]]; then
-      # Sincroniza buffers pendentes antes de liberar o cache
-      sync
-      # 3 = libera page cache + dentries + inodes
-      echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null
+    sync
+    echo "   Antes:  $(free -m | awk 'NR==2 {print "buff/cache=" $6 " MiB, livre=" $4 " MiB"}')"
+    # sudo -n: nunca pede senha; exige a regra NOPASSWD para /usr/bin/tee /proc/sys/vm/drop_caches.
+    # Se falhar, ABORTA (a limpeza faz parte do protocolo experimental e não pode ser pulada em silêncio).
+    if echo 3 | sudo -n tee /proc/sys/vm/drop_caches > /dev/null 2>&1; then
+      echo "   Depois: $(free -m | awk 'NR==2 {print "buff/cache=" $6 " MiB, livre=" $4 " MiB"}')"
       echo "   Cache do SO liberado com sucesso."
     else
-      echo "   AVISO: sem permissão para limpar o cache do SO."
-      echo "   Execute: echo 3 | sudo tee /proc/sys/vm/drop_caches"
-      echo "   Ou adicione ao sudoers: $(whoami) ALL=(ALL) NOPASSWD: /usr/bin/tee /proc/sys/vm/drop_caches"
-      echo "   Continuando sem limpeza de cache..."
+      echo "   ERRO: não foi possível limpar o cache do SO sem senha."
+      echo "   Configure uma vez: echo \"$(whoami) ALL=(ALL) NOPASSWD: /usr/bin/tee /proc/sys/vm/drop_caches\" | sudo tee /etc/sudoers.d/drop-caches"
+      echo "   (ou rode com --no-cache-clear para pular conscientemente)."
+      exit 1
     fi
   elif [[ "$(uname)" == "Darwin" ]]; then
-    sudo purge 2>/dev/null && echo "   Cache do macOS liberado (purge)." || \
-      echo "   AVISO: falha ao executar purge. Continuando..."
+    sudo purge 2>/dev/null && echo "   Cache do macOS liberado (purge)." || { echo "   ERRO: purge falhou."; exit 1; }
   else
-    echo "   AVISO: sistema não reconhecido para limpeza de cache."
+    echo "   ERRO: sistema não reconhecido para limpeza de cache."; exit 1
   fi
 else
   echo ""
@@ -118,7 +118,11 @@ sleep 3
 # --- Passo 4: Subir o cenário + stack de observabilidade ---
 echo ""
 echo "[4/6] Iniciando ${PROFILE} + Prometheus + Grafana + cAdvisor..."
-docker compose --profile "$PROFILE" up -d --build
+if [[ "${NO_BUILD:-0}" == "1" ]]; then
+  docker compose --profile "$PROFILE" up -d
+else
+  docker compose --profile "$PROFILE" up -d --build
+fi
 
 # --- Passo 5: Aguardar o app estar pronto ---
 echo ""
@@ -160,8 +164,10 @@ docker compose --profile "$PROFILE" run --rm \
   k6 run \
   --out experimental-prometheus-rw \
   --summary-export /results/last-run.json \
+  --summary-trend-stats="avg,min,med,max,p(90),p(95),p(99)" \
   -e TARGET_URL="$TARGET_URL" \
   -e SCENARIO_NAME="$PROFILE" \
+  -e PLATEAU_S="${PLATEAU_S:-600}" \
   "/scripts/${TEST}.js" \
   | tee "${RESULTS_DIR}/scenario-${SCENARIO}-${TEST}-${TIMESTAMP}.txt"
 

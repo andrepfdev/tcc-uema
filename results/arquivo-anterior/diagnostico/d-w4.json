@@ -1,0 +1,72 @@
+{
+ "cenario": "d",
+ "workers": 4,
+ "sequencial": {
+  "workers_distintos_memory": 1,
+  "memory": {
+   "45d59e67": {
+    "n": 200,
+    "contador_min": 2,
+    "contador_max": 201,
+    "reinicios": 0
+   }
+  },
+  "db_pg_pids_por_worker": {
+   "45d59e67": [
+    40
+   ]
+  }
+ },
+ "concorrente": {
+  "workers_distintos_memory": 5,
+  "memory": {
+   "45d59e67": {
+    "n": 49,
+    "contador_min": 202,
+    "contador_max": 250,
+    "reinicios": 4
+   },
+   "288658f7": {
+    "n": 7,
+    "contador_min": 1,
+    "contador_max": 7,
+    "reinicios": 0
+   },
+   "8e27ccd9": {
+    "n": 4,
+    "contador_min": 1,
+    "contador_max": 4,
+    "reinicios": 0
+   },
+   "b950b0a7": {
+    "n": 3,
+    "contador_min": 1,
+    "contador_max": 3,
+    "reinicios": 1
+   },
+   "17668207": {
+    "n": 137,
+    "contador_min": 1,
+    "contador_max": 137,
+    "reinicios": 0
+   }
+  },
+  "db_pg_pids_por_worker": {
+   "45d59e67": [
+    40
+   ],
+   "b950b0a7": [
+    48
+   ],
+   "8e27ccd9": [
+    49
+   ],
+   "288658f7": [
+    50
+   ],
+   "17668207": [
+    51
+   ]
+  }
+ }
+}

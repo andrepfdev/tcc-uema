@@ -42,10 +42,12 @@ class BenchmarkController extends Controller
         // Propriedade estática sobrevive ao loop do Worker Mode (mesma instância PHP)
         // Em PHP-FPM/Classic: reinicia a cada request (processo novo ou sem estado persistente)
         MemoryState::$counter++;
+        MemoryState::$worker ??= bin2hex(random_bytes(4));
 
         $this->response->setHeader('Content-Type', 'application/json');
         echo json_encode([
             'counter'  => MemoryState::$counter,
+            'worker'   => MemoryState::$worker,
             'pid'      => getmypid(),
             'scenario' => getenv('SCENARIO_NAME') ?: 'unknown',
         ]);
@@ -70,6 +72,7 @@ class BenchmarkController extends Controller
         echo json_encode([
             'item'     => $row,
             'php_pid'  => getmypid(),
+            'worker'   => (MemoryState::$worker ??= bin2hex(random_bytes(4))),
             'scenario' => getenv('SCENARIO_NAME') ?: 'unknown',
         ]);
     }
@@ -78,4 +81,5 @@ class BenchmarkController extends Controller
 class MemoryState
 {
     public static int $counter = 0;
+    public static ?string $worker = null; // identifica o worker (thread) que atende a requisição
 }

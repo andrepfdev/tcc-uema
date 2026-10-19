@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 class BenchmarkController extends Controller
 {
     private static int $counter = 0;
+    private static ?string $worker = null; // identifica o worker que atende a requisição
 
     public function health(): JsonResponse
     {
@@ -42,9 +43,11 @@ class BenchmarkController extends Controller
     public function memory(): JsonResponse
     {
         self::$counter++;
+        self::$worker ??= bin2hex(random_bytes(4));
 
         return response()->json([
             'counter'  => self::$counter,
+            'worker'   => self::$worker,
             'pid'      => getmypid(),
             'scenario' => env('SCENARIO_NAME', 'scenario-d'),
         ]);
@@ -65,6 +68,7 @@ class BenchmarkController extends Controller
         return response()->json([
             'item'     => $row,
             'php_pid'  => getmypid(),
+            'worker'   => (self::$worker ??= bin2hex(random_bytes(4))),
             'scenario' => env('SCENARIO_NAME', 'scenario-d'),
         ]);
     }

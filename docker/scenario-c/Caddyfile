@@ -2,7 +2,7 @@
     frankenphp {
         worker {
             file public/frankenphp-worker.php
-            num 4
+            num {$FRANKENPHP_WORKERS:4}
         }
     }
     order php_server before file_server

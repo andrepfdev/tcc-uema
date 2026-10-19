@@ -1,7 +1,10 @@
 {
     # FrankenPHP modo Classic — sem diretiva worker
     # Cada request inicia um novo contexto PHP (equivalente ao PHP-FPM)
-    frankenphp
+    frankenphp {
+        # 4 threads PHP: equivalente aos 4 processos do PHP-FPM (A) e aos 4 workers (C, D)
+        num_threads 4
+    }
     order php_server before file_server
     admin off
 }

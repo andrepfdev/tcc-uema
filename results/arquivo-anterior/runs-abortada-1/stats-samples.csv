@@ -1,0 +1,19 @@
+ts,name,cpu_pct,mem_usage
+1792085123,tcc-uema-nginx-a-1,0.29%,19.64MiB / 64MiB
+1792085123,tcc-uema-app-a-1,2.42%,43.95MiB / 448MiB
+1792085130,tcc-uema-nginx-a-1,6.41%,20.47MiB / 64MiB
+1792085130,tcc-uema-app-a-1,64.85%,46.64MiB / 448MiB
+1792085135,tcc-uema-nginx-a-1,6.87%,20.87MiB / 64MiB
+1792085135,tcc-uema-app-a-1,64.31%,47.43MiB / 448MiB
+1792085141,tcc-uema-nginx-a-1,8.02%,20.98MiB / 64MiB
+1792085141,tcc-uema-app-a-1,85.50%,46.82MiB / 448MiB
+1792085146,tcc-uema-nginx-a-1,8.82%,20.65MiB / 64MiB
+1792085146,tcc-uema-app-a-1,86.28%,47.53MiB / 448MiB
+1792085152,tcc-uema-nginx-a-1,8.44%,20.89MiB / 64MiB
+1792085152,tcc-uema-app-a-1,85.26%,47.95MiB / 448MiB
+1792085157,tcc-uema-nginx-a-1,8.16%,21.56MiB / 64MiB
+1792085157,tcc-uema-app-a-1,85.78%,46.73MiB / 448MiB
+1792085163,tcc-uema-nginx-a-1,7.28%,21.8MiB / 64MiB
+1792085163,tcc-uema-app-a-1,85.34%,47.38MiB / 448MiB
+1792085168,tcc-uema-nginx-a-1,2.71%,19.5MiB / 64MiB
+1792085168,tcc-uema-app-a-1,85.09%,47.54MiB / 448MiB

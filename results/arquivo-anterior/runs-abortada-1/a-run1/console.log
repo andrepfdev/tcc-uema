@@ -1,0 +1,209 @@
+======================================================================
+ TCC UEMA — Benchmark PHP Architecture
+ Cenário:  SCENARIO-A (nginx-a)
+ Teste:    load
+ Data/hora: 2026-10-15 14:25:10
+======================================================================
+
+[1/6] Derrubando cenários anteriores...
+   Volume do Prometheus limpo (tcc-uema_prometheus-data).
+
+[2/6] Limpando cache do sistema operacional (page cache, dentries, inodes)...
+   Antes:  
+   Depois: 
+   Cache do SO liberado com sucesso.
+
+[3/6] Aguardando 3s para memória assentar...
+
+[4/6] Iniciando scenario-a + Prometheus + Grafana + cAdvisor...
+ Network tcc-uema_bench-net  Creating
+ Network tcc-uema_bench-net  Created
+ Volume "tcc-uema_prometheus-data"  Creating
+ Volume "tcc-uema_prometheus-data"  Created
+ Container tcc-uema-postgres-1  Creating
+ Container tcc-uema-prometheus-1  Creating
+ Container tcc-uema-cadvisor-1  Creating
+ Container tcc-uema-cadvisor-1  Created
+ Container tcc-uema-prometheus-1  Created
+ Container tcc-uema-grafana-1  Creating
+ Container tcc-uema-k6-1  Creating
+ Container tcc-uema-postgres-1  Created
+ Container tcc-uema-app-a-1  Creating
+ Container tcc-uema-k6-1  Created
+ Container tcc-uema-app-a-1  Created
+ Container tcc-uema-nginx-a-1  Creating
+ Container tcc-uema-grafana-1  Created
+ Container tcc-uema-nginx-a-1  Created
+ Container tcc-uema-cadvisor-1  Starting
+ Container tcc-uema-prometheus-1  Starting
+ Container tcc-uema-postgres-1  Starting
+ Container tcc-uema-prometheus-1  Started
+ Container tcc-uema-k6-1  Starting
+ Container tcc-uema-grafana-1  Starting
+ Container tcc-uema-cadvisor-1  Started
+ Container tcc-uema-postgres-1  Started
+ Container tcc-uema-postgres-1  Waiting
+ Container tcc-uema-k6-1  Started
+ Container tcc-uema-grafana-1  Started
+ Container tcc-uema-postgres-1  Healthy
+ Container tcc-uema-app-a-1  Starting
+ Container tcc-uema-app-a-1  Started
+ Container tcc-uema-nginx-a-1  Starting
+ Container tcc-uema-nginx-a-1  Started
+
+[5/6] Aguardando nginx-a responder em /health...
+   Tentativa 1/30... aguardando 2s
+   nginx-a está pronto!
+
+[6/6] Executando load test contra http://nginx-a:8080...
+      Grafana disponível em http://localhost:3000 (admin / benchmark)
+
+ Container tcc-uema-prometheus-1  Running
+time="2026-10-15T17:25:27Z" level=warning msg="Legacy env var detected, use --features or K6_FEATURES instead" env=K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM feature=native-histograms lifecycle=deprecated_alias source=env_legacy_alias
+time="2026-10-15T17:25:27Z" level=info msg="Experimental feature enabled" feature=native-histograms lifecycle=experimental
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: /scripts/load.js
+ web dashboard: http://127.0.0.1:5665
+        output: Prometheus remote write (http://prometheus:9090/api/v1/write)
+
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 15m30s max duration (incl. graceful stop):
+              * default: Up to 100 looping VUs for 15m0s over 4 stages (gracefulRampDown: 30s, gracefulStop: 30s)
+
+
+running (00m01.0s), 001/100 VUs, 109 complete and 0 interrupted iterations
+default   [   0% ] 001/100 VUs  00m01.0s/15m00.0s
+
+running (00m02.0s), 001/100 VUs, 225 complete and 0 interrupted iterations
+default   [   0% ] 001/100 VUs  00m02.0s/15m00.0s
+
+running (00m03.0s), 001/100 VUs, 332 complete and 0 interrupted iterations
+default   [   0% ] 001/100 VUs  00m03.0s/15m00.0s
+
+running (00m04.0s), 001/100 VUs, 443 complete and 0 interrupted iterations
+default   [   0% ] 001/100 VUs  00m04.0s/15m00.0s
+
+running (00m05.0s), 001/100 VUs, 563 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m05.0s/15m00.0s
+
+running (00m06.0s), 001/100 VUs, 690 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m06.0s/15m00.0s
+
+running (00m07.0s), 001/100 VUs, 807 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m07.0s/15m00.0s
+
+running (00m08.0s), 001/100 VUs, 917 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m08.0s/15m00.0s
+
+running (00m09.0s), 001/100 VUs, 1033 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m09.0s/15m00.0s
+
+running (00m10.0s), 001/100 VUs, 1153 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m10.0s/15m00.0s
+
+running (00m11.0s), 001/100 VUs, 1283 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m11.0s/15m00.0s
+
+running (00m12.0s), 001/100 VUs, 1403 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m12.0s/15m00.0s
+
+running (00m13.0s), 001/100 VUs, 1524 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m13.0s/15m00.0s
+
+running (00m14.0s), 002/100 VUs, 1654 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m14.0s/15m00.0s
+
+running (00m15.0s), 002/100 VUs, 1800 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m15.0s/15m00.0s
+
+running (00m16.0s), 002/100 VUs, 1948 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m16.0s/15m00.0s
+
+running (00m17.0s), 002/100 VUs, 2096 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m17.0s/15m00.0s
+
+running (00m18.0s), 002/100 VUs, 2240 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m18.0s/15m00.0s
+
+running (00m19.0s), 002/100 VUs, 2380 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m19.0s/15m00.0s
+
+running (00m20.0s), 002/100 VUs, 2527 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m20.0s/15m00.0s
+
+running (00m21.0s), 002/100 VUs, 2686 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m21.0s/15m00.0s
+
+running (00m22.0s), 002/100 VUs, 2812 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m22.0s/15m00.0s
+
+running (00m23.0s), 002/100 VUs, 2952 complete and 0 interrupted iterations
+default   [   3% ] 002/100 VUs  00m23.0s/15m00.0s
+
+running (00m24.0s), 002/100 VUs, 3101 complete and 0 interrupted iterations
+default   [   3% ] 002/100 VUs  00m24.0s/15m00.0s
+
+running (00m25.0s), 002/100 VUs, 3241 complete and 0 interrupted iterations
+default   [   3% ] 002/100 VUs  00m25.0s/15m00.0s
+
+running (00m26.0s), 002/100 VUs, 3380 complete and 0 interrupted iterations
+default   [   3% ] 002/100 VUs  00m26.0s/15m00.0s
+
+running (00m27.0s), 003/100 VUs, 3527 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m27.0s/15m00.0s
+
+running (00m28.0s), 003/100 VUs, 3652 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m28.0s/15m00.0s
+
+running (00m29.0s), 003/100 VUs, 3776 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m29.0s/15m00.0s
+
+running (00m30.0s), 003/100 VUs, 3921 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m30.0s/15m00.0s
+
+running (00m31.0s), 003/100 VUs, 4050 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m31.0s/15m00.0s
+
+running (00m32.0s), 003/100 VUs, 4156 complete and 0 interrupted iterations
+default   [   4% ] 003/100 VUs  00m32.0s/15m00.0s
+
+running (00m33.0s), 003/100 VUs, 4297 complete and 0 interrupted iterations
+default   [   4% ] 003/100 VUs  00m33.0s/15m00.0s
+
+running (00m34.0s), 003/100 VUs, 4422 complete and 0 interrupted iterations
+default   [   4% ] 003/100 VUs  00m34.0s/15m00.0s
+
+running (00m35.0s), 003/100 VUs, 4566 complete and 0 interrupted iterations
+default   [   4% ] 003/100 VUs  00m35.0s/15m00.0s
+
+running (00m36.0s), 003/100 VUs, 4708 complete and 0 interrupted iterations
+default   [   4% ] 003/100 VUs  00m36.0s/15m00.0s
+
+running (00m37.0s), 003/100 VUs, 4854 complete and 0 interrupted iterations
+default   [   4% ] 003/100 VUs  00m37.0s/15m00.0s
+
+running (00m38.0s), 003/100 VUs, 4983 complete and 0 interrupted iterations
+default   [   4% ] 003/100 VUs  00m38.0s/15m00.0s
+
+running (00m39.0s), 003/100 VUs, 5103 complete and 0 interrupted iterations
+default   [   4% ] 003/100 VUs  00m39.0s/15m00.0s
+
+running (00m40.0s), 003/100 VUs, 5257 complete and 0 interrupted iterations
+default   [   4% ] 003/100 VUs  00m40.0s/15m00.0s
+
+running (00m41.0s), 004/100 VUs, 5392 complete and 0 interrupted iterations
+default   [   5% ] 004/100 VUs  00m41.0s/15m00.0s
+
+running (00m42.0s), 004/100 VUs, 5522 complete and 0 interrupted iterations
+default   [   5% ] 004/100 VUs  00m42.0s/15m00.0s
+
+running (00m43.0s), 004/100 VUs, 5642 complete and 0 interrupted iterations
+default   [   5% ] 004/100 VUs  00m43.0s/15m00.0s
+canceled

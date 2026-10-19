@@ -1,0 +1,36 @@
+{
+ "cenario": "c",
+ "workers": 1,
+ "sequencial": {
+  "workers_distintos_memory": 1,
+  "memory": {
+   "f56ba2bf": {
+    "n": 200,
+    "contador_min": 2,
+    "contador_max": 201,
+    "reinicios": 0
+   }
+  },
+  "db_pg_pids_por_worker": {
+   "f56ba2bf": [
+    "40"
+   ]
+  }
+ },
+ "concorrente": {
+  "workers_distintos_memory": 1,
+  "memory": {
+   "f56ba2bf": {
+    "n": 200,
+    "contador_min": 202,
+    "contador_max": 401,
+    "reinicios": 2
+   }
+  },
+  "db_pg_pids_por_worker": {
+   "f56ba2bf": [
+    "40"
+   ]
+  }
+ }
+}

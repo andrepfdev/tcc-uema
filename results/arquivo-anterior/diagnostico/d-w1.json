@@ -1,0 +1,45 @@
+{
+ "cenario": "d",
+ "workers": 1,
+ "sequencial": {
+  "workers_distintos_memory": 1,
+  "memory": {
+   "066e42de": {
+    "n": 200,
+    "contador_min": 2,
+    "contador_max": 201,
+    "reinicios": 0
+   }
+  },
+  "db_pg_pids_por_worker": {
+   "066e42de": [
+    40
+   ]
+  }
+ },
+ "concorrente": {
+  "workers_distintos_memory": 2,
+  "memory": {
+   "066e42de": {
+    "n": 48,
+    "contador_min": 202,
+    "contador_max": 249,
+    "reinicios": 1
+   },
+   "50143725": {
+    "n": 152,
+    "contador_min": 1,
+    "contador_max": 152,
+    "reinicios": 2
+   }
+  },
+  "db_pg_pids_por_worker": {
+   "066e42de": [
+    40
+   ],
+   "50143725": [
+    48
+   ]
+  }
+ }
+}

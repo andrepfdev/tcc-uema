@@ -37,6 +37,15 @@ export const options = {
     'endpoint_compute_duration': ['p(95)<5000'],
     'endpoint_memory_duration':  ['p(95)<5000'],
     'endpoint_db_duration':      ['p(95)<5000'],
+
+    // Submétricas do PATAMAR (força o k6 a exportá-las no summary): RPS = contagem / duração do patamar
+    'http_reqs{phase:plateau}':                    ['count>=0'],
+    'http_req_failed{phase:plateau}':              ['rate<0.05'],
+    'http_req_duration{phase:plateau}':            ['p(99)<60000'],
+    'endpoint_health_duration{phase:plateau}':     ['p(99)<60000'],
+    'endpoint_compute_duration{phase:plateau}':    ['p(99)<60000'],
+    'endpoint_memory_duration{phase:plateau}':     ['p(99)<60000'],
+    'endpoint_db_duration{phase:plateau}':         ['p(99)<60000'],
   },
 };
 

@@ -36,7 +36,7 @@ services:
     profiles: [scenario-a]
     image: nginx:alpine
     ports:
-      - "8080:8080"
+      - "${BENCH_PORT:-8080}:8080"
     deploy:
       resources:
         limits:
@@ -65,7 +65,7 @@ services:
       context: .
       dockerfile: docker/scenario-b/Dockerfile
     ports:
-      - "8080:8080"
+      - "${BENCH_PORT:-8080}:8080"
     deploy:
       resources:
         limits:
@@ -73,6 +73,33 @@ services:
           memory: "512M"
     environment:
       SCENARIO_NAME: scenario-b
+      COMPUTE_SIZE: "1000"
+      CI_ENVIRONMENT: production
+      SERVER_NAME: ":8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bench-net
+    restart: unless-stopped
+
+  # Sensibilidade: FrankenPHP clássico com número PADRÃO de threads (sem num_threads)
+  app-e:
+    profiles: [scenario-e]
+    build:
+      context: .
+      dockerfile: docker/scenario-b/Dockerfile
+    ports:
+      - "${BENCH_PORT:-8080}:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "512M"
+    volumes:
+      - ./docker/scenario-b/Caddyfile.default:/etc/frankenphp/Caddyfile:ro
+    environment:
+      SCENARIO_NAME: scenario-e
       COMPUTE_SIZE: "1000"
       CI_ENVIRONMENT: production
       SERVER_NAME: ":8080"
@@ -94,13 +121,14 @@ services:
       context: .
       dockerfile: docker/scenario-c/Dockerfile
     ports:
-      - "8080:8080"
+      - "${BENCH_PORT:-8080}:8080"
     deploy:
       resources:
         limits:
           cpus: "1.0"
           memory: "512M"
     environment:
+      FRANKENPHP_WORKERS: "${FRANKENPHP_WORKERS:-4}"
       SCENARIO_NAME: scenario-c
       COMPUTE_SIZE: "1000"
       CI_ENVIRONMENT: production
@@ -121,8 +149,9 @@ services:
     build:
       context: .
       dockerfile: docker/scenario-d/Dockerfile
+    command: ["php", "artisan", "octane:frankenphp", "--workers=${OCTANE_WORKERS:-4}", "--port=8080", "--host=0.0.0.0"]
     ports:
-      - "8080:8080"
+      - "${BENCH_PORT:-8080}:8080"
     deploy:
       resources:
         limits:
@@ -155,7 +184,7 @@ services:
   #   - Cenário C (Worker Mode): conexão reutilizada = sem overhead de handshake
   # ===========================================================================
   postgres:
-    profiles: [scenario-a, scenario-b, scenario-c, scenario-d]
+    profiles: [scenario-a, scenario-b, scenario-c, scenario-d, scenario-e]
     image: postgres:16-alpine
     environment:
       POSTGRES_DB:       benchmark
@@ -190,7 +219,7 @@ services:
   # Executa apenas via `docker compose run --rm k6 run /scripts/...`
   # ===========================================================================
   k6:
-    profiles: [scenario-a, scenario-b, scenario-c, scenario-d]
+    profiles: [scenario-a, scenario-b, scenario-c, scenario-d, scenario-e]
     image: grafana/k6:latest
     user: root
     volumes:
@@ -214,7 +243,7 @@ services:
   # ===========================================================================
 
   prometheus:
-    profiles: [scenario-a, scenario-b, scenario-c, scenario-d]
+    profiles: [scenario-a, scenario-b, scenario-c, scenario-d, scenario-e]
     image: prom/prometheus:latest
     ports:
       - "9090:9090"
@@ -231,7 +260,7 @@ services:
     restart: unless-stopped
 
   grafana:
-    profiles: [scenario-a, scenario-b, scenario-c, scenario-d]
+    profiles: [scenario-a, scenario-b, scenario-c, scenario-d, scenario-e]
     image: grafana/grafana:latest
     ports:
       - "3000:3000"
@@ -253,7 +282,7 @@ services:
 
   # cAdvisor — expõe CPU/RAM dos containers em formato Prometheus
   cadvisor:
-    profiles: [scenario-a, scenario-b, scenario-c, scenario-d]
+    profiles: [scenario-a, scenario-b, scenario-c, scenario-d, scenario-e]
     image: gcr.io/cadvisor/cadvisor:latest
     ports:
       - "8081:8080"

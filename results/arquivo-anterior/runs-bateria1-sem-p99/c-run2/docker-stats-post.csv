@@ -1,0 +1,5 @@
+tcc-uema-grafana-1,1.31%,229.2MiB / 14.5GiB
+tcc-uema-app-c-1,2.38%,208.6MiB / 512MiB
+tcc-uema-prometheus-1,11.00%,177.9MiB / 14.5GiB
+tcc-uema-postgres-1,0.00%,22.35MiB / 256MiB
+tcc-uema-cadvisor-1,4.91%,135.6MiB / 14.5GiB
