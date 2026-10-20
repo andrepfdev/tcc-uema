@@ -11,7 +11,7 @@
 #   ./scripts/run-scenario.sh c load --no-cache-clear  # sem limpeza de cache
 #
 # Cenários disponíveis: a | b | c | d
-# Testes disponíveis:   smoke | load
+# Testes disponíveis:   smoke | load | long | rate (taxa de chegada fixa; ver k6/rate.js)
 # ==============================================================================
 
 set -euo pipefail
@@ -35,8 +35,8 @@ if [[ ! "$SCENARIO" =~ ^[abcde]$ ]]; then
   exit 1
 fi
 
-if [[ ! "$TEST" =~ ^(smoke|load|long)$ ]]; then
-  echo "Erro: teste inválido '$TEST'. Use: smoke, load ou long"
+if [[ ! "$TEST" =~ ^(smoke|load|long|rate)$ ]]; then
+  echo "Erro: teste inválido '$TEST'. Use: smoke, load, long ou rate"
   exit 1
 fi
 
@@ -168,6 +168,9 @@ docker compose --profile "$PROFILE" run --rm \
   -e TARGET_URL="$TARGET_URL" \
   -e SCENARIO_NAME="$PROFILE" \
   -e PLATEAU_S="${PLATEAU_S:-600}" \
+  -e RATE="${RATE:-100}" \
+  -e WARMUP_S="${WARMUP_S:-120}" \
+  -e RAMP_S="${RAMP_S:-120}" \
   "/scripts/${TEST}.js" \
   | tee "${RESULTS_DIR}/scenario-${SCENARIO}-${TEST}-${TIMESTAMP}.txt"
 
