@@ -20,3 +20,8 @@ results/*.html
 # Ambiente local
 .env.local
 *.DS_Store
+
+# Python e artefatos de build
+__pycache__/
+*.pyc
+docs/build/out/png*/
