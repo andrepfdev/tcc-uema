@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Análise complementar para o artigo do COTB 2027 (não altera results/analysis nem os números do TCC).
 
-Capacidade (carga fechada, 100 VUs): n = 5 por cenário = results/runs/<c>-run{1..3} (19/out) + results/cotb/<c>-rep{4,5} (20/out).
+Vazão observada (carga fechada, 100 VUs, patamar de 10 min): n = 5 por cenário = results/runs/<c>-run{1..3} (19/out) + results/cotb/<c>-rep{4,5} (20/out).
 Latência sem saturação (taxa fixa, 100 req/s): results/cotb/<c>-rate{1..3}, métricas do patamar.
 Saídas: results/cotb/analysis/*.md|csv e figuras em computeronthebeach/artigo/figuras/.
 
@@ -29,19 +29,22 @@ CEN = ["a", "b", "e", "c", "d"]
 NOMES = {"a": "A (PHP-FPM)", "b": "B (clássico)", "e": "E (clássico, padrão)", "c": "C (CI4 Worker)", "d": "D (Octane)"}
 CORES = {"a": "#8c8c8c", "b": "#4c78a8", "c": "#e07b39", "d": "#59a14f", "e": "#b07aa1"}
 ENDPOINTS = ["health", "compute", "memory", "db"]
-PARES = [("b", "a"), ("e", "b"), ("c", "a"), ("c", "e"), ("d", "c")]
+PARES = [("b", "a"), ("e", "b"), ("c", "a"), ("c", "b"), ("c", "e"), ("d", "c")]
 
 
 # ---------------------------------------------------------------- leitura
-def metricas(d, sufixo=""):
-    """Métricas de um last-run.json; sufixo '{phase:plateau}' seleciona o patamar."""
+def metricas(d, plateau_s):
+    """Métricas do PATAMAR de um last-run.json (aquecimento, rampa e descida excluídos).
+    RPS = requisições do patamar / duração do patamar (o campo `rate` da submétrica divide pela duração total)."""
     m = json.load(open(d / "last-run.json"))["metrics"]
-    dur = m[f"http_req_duration{sufixo}"]
+    sf = "{phase:plateau}"
+    dur = m[f"http_req_duration{sf}"]
     r = {"p50": dur["med"], "p95": dur["p(95)"], "p99": dur["p(99)"], "avg": dur["avg"],
-         "rps": m["http_reqs"]["rate"], "err": m["http_req_failed"].get("value", m["http_req_failed"].get("rate", 0)),
+         "rps": m[f"http_reqs{sf}"]["count"] / plateau_s,
+         "err": m[f"http_req_failed{sf}"].get("value", m[f"http_req_failed{sf}"].get("rate", 0)),
          "dropped": m.get("dropped_iterations", {}).get("count", 0)}
     for e in ENDPOINTS:
-        k = f"endpoint_{e}_duration{sufixo}"
+        k = f"endpoint_{e}_duration{sf}"
         r[f"{e}_avg"], r[f"{e}_p95"] = m[k]["avg"], m[k]["p(95)"]
     return r
 
@@ -79,13 +82,13 @@ def carregar():
     for s in CEN:
         for d, am, bloco in [(RUNS / f"{s}-run{i}", am_runs, "19/out") for i in (1, 2, 3)] + \
                             [(COTB / f"{s}-rep{i}", am_cotb, "20/out") for i in (4, 5)]:
-            r = metricas(d)
+            r = metricas(d, 600)
             r.update(recurso(am, s, fim_de(d), 690, 90))  # patamar de 10 min, como em scripts/analyze.py
             r["bloco"], r["dir"] = bloco, d.name
             cap[s].append(r)
         for i in (1, 2, 3):
             d = COTB / f"{s}-rate{i}"
-            r = metricas(d, "{phase:plateau}")
+            r = metricas(d, 480)
             r.update(recurso(am_cotb, s, fim_de(d), 450, 15))  # patamar de 8 min (menos margens)
             r["dir"] = d.name
             rate[s].append(r)
