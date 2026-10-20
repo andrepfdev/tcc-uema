@@ -8,7 +8,7 @@
 services:
 
   # ===========================================================================
-  # CENÁRIO A — Legacy: CodeIgniter 4 + PHP-FPM (Alpine) + Nginx
+  # CENÁRIO A — Legacy: CodeIgniter 4 + PHP-FPM + Nginx (base Debian 13, igual aos demais)
   # Topologia real de produção PHP tradicional
   # ===========================================================================
   app-a:
@@ -41,9 +41,9 @@ services:
 
   nginx-a:
     profiles: [scenario-a]
-    image: nginx:alpine
+    image: nginx:1.31.7-trixie@sha256:bc4cad49969aaf95eb4eecec5572846f86e59f1e8332aba36ed64b91aff8b724
     ports:
-      - "8080:8080"
+      - "${BENCH_PORT:-8080}:8080"
     deploy:
       resources:
         limits:
@@ -72,7 +72,7 @@ services:
       context: .
       dockerfile: docker/scenario-b/Dockerfile
     ports:
-      - "8080:8080"
+      - "${BENCH_PORT:-8080}:8080"
     deploy:
       resources:
         limits:
@@ -80,6 +80,33 @@ services:
           memory: "512M"
     environment:
       SCENARIO_NAME: scenario-b
+      COMPUTE_SIZE: "1000"
+      CI_ENVIRONMENT: production
+      SERVER_NAME: ":8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bench-net
+    restart: unless-stopped
+
+  # Sensibilidade: FrankenPHP clássico com número PADRÃO de threads (sem num_threads)
+  app-e:
+    profiles: [scenario-e]
+    build:
+      context: .
+      dockerfile: docker/scenario-b/Dockerfile
+    ports:
+      - "${BENCH_PORT:-8080}:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "512M"
+    volumes:
+      - ./docker/scenario-b/Caddyfile.default:/etc/frankenphp/Caddyfile:ro
+    environment:
+      SCENARIO_NAME: scenario-e
       COMPUTE_SIZE: "1000"
       CI_ENVIRONMENT: production
       SERVER_NAME: ":8080"
@@ -101,13 +128,14 @@ services:
       context: .
       dockerfile: docker/scenario-c/Dockerfile
     ports:
-      - "8080:8080"
+      - "${BENCH_PORT:-8080}:8080"
     deploy:
       resources:
         limits:
           cpus: "1.0"
           memory: "512M"
     environment:
+      FRANKENPHP_WORKERS: "${FRANKENPHP_WORKERS:-4}"
       SCENARIO_NAME: scenario-c
       COMPUTE_SIZE: "1000"
       CI_ENVIRONMENT: production
@@ -128,8 +156,9 @@ services:
     build:
       context: .
       dockerfile: docker/scenario-d/Dockerfile
+    command: ["php", "artisan", "octane:frankenphp", "--workers=${OCTANE_WORKERS:-4}", "--port=8080", "--host=0.0.0.0"]
     ports:
-      - "8080:8080"
+      - "${BENCH_PORT:-8080}:8080"
     deploy:
       resources:
         limits:
@@ -162,7 +191,7 @@ services:
   #   - Cenário C (Worker Mode): conexão reutilizada = sem overhead de handshake
   # ===========================================================================
   postgres:
-    profiles: [scenario-a, scenario-b, scenario-c, scenario-d]
+    profiles: [scenario-a, scenario-b, scenario-c, scenario-d, scenario-e]
     image: postgres:16-alpine
     environment:
       POSTGRES_DB:       benchmark
@@ -197,7 +226,7 @@ services:
   # Executa apenas via `docker compose run --rm k6 run /scripts/...`
   # ===========================================================================
   k6:
-    profiles: [scenario-a, scenario-b, scenario-c, scenario-d]
+    profiles: [scenario-a, scenario-b, scenario-c, scenario-d, scenario-e]
     image: grafana/k6:latest
     user: root
     volumes:
@@ -221,7 +250,7 @@ services:
   # ===========================================================================
 
   prometheus:
-    profiles: [scenario-a, scenario-b, scenario-c, scenario-d]
+    profiles: [scenario-a, scenario-b, scenario-c, scenario-d, scenario-e]
     image: prom/prometheus:latest
     ports:
       - "9090:9090"
@@ -238,7 +267,7 @@ services:
     restart: unless-stopped
 
   grafana:
-    profiles: [scenario-a, scenario-b, scenario-c, scenario-d]
+    profiles: [scenario-a, scenario-b, scenario-c, scenario-d, scenario-e]
     image: grafana/grafana:latest
     ports:
       - "3000:3000"
@@ -260,7 +289,7 @@ services:
 
   # cAdvisor — expõe CPU/RAM dos containers em formato Prometheus
   cadvisor:
-    profiles: [scenario-a, scenario-b, scenario-c, scenario-d]
+    profiles: [scenario-a, scenario-b, scenario-c, scenario-d, scenario-e]
     image: gcr.io/cadvisor/cadvisor:latest
     ports:
       - "8081:8080"
@@ -283,23 +312,28 @@ volumes:
   postgres-data:
 ```
 
-### APÊNDICE B — Configuração dos servidores e imagens dos cenários
+### APÊNDICE B — Imagens e configuração dos servidores
+
+O cenário E usa o mesmo `Dockerfile` do cenário B, trocando apenas o `Caddyfile` por `Caddyfile.default`.
 
 **docker/scenario-a/Dockerfile**
 
-```
-FROM php:8.3-fpm-alpine
+```dockerfile
+FROM php:8.3.35-fpm-trixie@sha256:ed67b5fcd7600614dd651621a04214fbe16d373262cb31eb50bc224c18cf0e88
 
-# icu-dev: necessário para ext-intl (requerida pelo CI4)
+# libicu-dev: necessário para ext-intl (requerida pelo CI4)
 # libpq-dev: necessário para ext-pgsql/pdo_pgsql
-RUN apk add --no-cache icu-dev libpq-dev git unzip \
-    && docker-php-ext-install opcache intl pgsql pdo_pgsql
+# git/unzip: necessários para o Composer
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libicu-dev libpq-dev git unzip \
+    && docker-php-ext-install opcache intl pgsql pdo_pgsql \
+    && rm -rf /var/lib/apt/lists/*
 
 # OPcache para benchmark justo (Scenario A recebe todos os otimizadores que tem direito)
 COPY docker/scenario-a/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
 # Instalar composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2@sha256:af98f42dfff7c68ba8d53c2164fd9fde1087b7d449514baa38c418b1f6bc4bac /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
@@ -324,7 +358,7 @@ CMD ["php-fpm"]
 
 **docker/scenario-a/php-fpm.conf**
 
-```
+```nginx
 [www]
 user  = www-data
 group = www-data
@@ -342,7 +376,7 @@ access.log = /dev/null
 
 **docker/scenario-a/nginx.conf**
 
-```
+```nginx
 server {
     listen 8080;
     root /var/www/html/public;
@@ -370,10 +404,23 @@ server {
 }
 ```
 
+**docker/scenario-a/opcache.ini**
+
+```ini
+opcache.enable=1
+opcache.memory_consumption=128
+opcache.interned_strings_buffer=8
+opcache.max_accelerated_files=10000
+opcache.validate_timestamps=0
+opcache.revalidate_freq=0
+opcache.save_comments=0
+opcache.fast_shutdown=1
+```
+
 **docker/scenario-b/Dockerfile**
 
-```
-FROM dunglas/frankenphp:latest-php8.3
+```dockerfile
+FROM dunglas/frankenphp:1.13.0-php8.3.35@sha256:3a1dfb9404aceb016493f6c18989cc2b66ce62c6de2a79ae6e3b3dfe7f94094a
 
 # git necessário para o Composer em imagens Debian
 RUN apt-get update && apt-get install -y --no-install-recommends git unzip && rm -rf /var/lib/apt/lists/*
@@ -385,7 +432,7 @@ RUN install-php-extensions opcache intl pgsql pdo_pgsql
 COPY docker/scenario-b/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
 # Instalar composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2@sha256:af98f42dfff7c68ba8d53c2164fd9fde1087b7d449514baa38c418b1f6bc4bac /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
@@ -400,7 +447,7 @@ RUN mkdir -p writable/{cache,logs,session,uploads,debugbar} \
     && chmod -R 777 writable/
 
 # Caddyfile para modo Classic (sem diretiva worker — comportamento igual ao PHP-FPM)
-COPY docker/scenario-b/Caddyfile /etc/caddy/Caddyfile
+COPY docker/scenario-b/Caddyfile /etc/frankenphp/Caddyfile
 
 ENV SCENARIO_NAME=scenario-b
 ENV COMPUTE_SIZE=1000
@@ -415,6 +462,31 @@ EXPOSE 8080
 ```
 {
     # FrankenPHP modo Classic — sem diretiva worker
+    # Cada request inicia um novo contexto PHP (equivalente ao PHP-FPM)
+    frankenphp {
+        # 4 threads PHP: equivalente aos 4 processos do PHP-FPM (A) e aos 4 workers (C, D)
+        num_threads 4
+    }
+    order php_server before file_server
+    admin off
+}
+
+:8080 {
+    root * /app/public
+
+    php_server
+
+    log {
+        output discard
+    }
+}
+```
+
+**docker/scenario-b/Caddyfile.default**
+
+```
+{
+    # FrankenPHP modo Classic — configuração PADRÃO de threads (sensibilidade; ~2x núcleos do hospedeiro)
     # Cada request inicia um novo contexto PHP (equivalente ao PHP-FPM)
     frankenphp
     order php_server before file_server
@@ -434,8 +506,8 @@ EXPOSE 8080
 
 **docker/scenario-c/Dockerfile**
 
-```
-FROM dunglas/frankenphp:latest-php8.3
+```dockerfile
+FROM dunglas/frankenphp:1.13.0-php8.3.35@sha256:3a1dfb9404aceb016493f6c18989cc2b66ce62c6de2a79ae6e3b3dfe7f94094a
 
 # git necessário para o Composer em imagens Debian
 RUN apt-get update && apt-get install -y --no-install-recommends git unzip && rm -rf /var/lib/apt/lists/*
@@ -447,7 +519,7 @@ RUN install-php-extensions opcache intl pgsql pdo_pgsql
 COPY docker/scenario-c/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
 # Instalar composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2@sha256:af98f42dfff7c68ba8d53c2164fd9fde1087b7d449514baa38c418b1f6bc4bac /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
@@ -467,7 +539,7 @@ RUN mkdir -p writable/{cache,logs,session,uploads,debugbar} \
 
 # Caddyfile oficial gerado pelo `php spark worker:install`
 # Worker mode com 4 workers (mesmo número de pm.max_children do Cenário A)
-COPY docker/scenario-c/Caddyfile /etc/caddy/Caddyfile
+COPY docker/scenario-c/Caddyfile /etc/frankenphp/Caddyfile
 
 ENV SCENARIO_NAME=scenario-c
 ENV COMPUTE_SIZE=1000
@@ -484,7 +556,7 @@ EXPOSE 8080
     frankenphp {
         worker {
             file public/frankenphp-worker.php
-            num 4
+            num {$FRANKENPHP_WORKERS:4}
         }
     }
     order php_server before file_server
@@ -508,8 +580,8 @@ EXPOSE 8080
 
 **docker/scenario-d/Dockerfile**
 
-```
-FROM dunglas/frankenphp:latest-php8.3
+```dockerfile
+FROM dunglas/frankenphp:1.13.0-php8.3.35@sha256:3a1dfb9404aceb016493f6c18989cc2b66ce62c6de2a79ae6e3b3dfe7f94094a
 
 # git necessário para o Composer em imagens Debian
 RUN apt-get update && apt-get install -y --no-install-recommends git unzip && rm -rf /var/lib/apt/lists/*
@@ -521,7 +593,7 @@ RUN install-php-extensions opcache pcntl pgsql pdo_pgsql
 COPY docker/scenario-d/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
 # Instalar composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2@sha256:af98f42dfff7c68ba8d53c2164fd9fde1087b7d449514baa38c418b1f6bc4bac /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
@@ -529,7 +601,7 @@ WORKDIR /app
 COPY apps/laravel-octane/ .
 
 # Instalar dependências
-RUN composer update --no-dev --optimize-autoloader --no-interaction --no-scripts
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Otimizações de produção do Laravel
 RUN php artisan config:cache \
@@ -550,19 +622,6 @@ EXPOSE 8080
 
 # Octane com FrankenPHP — 4 workers para comparação justa com os outros cenários
 CMD ["php", "artisan", "octane:frankenphp", "--workers=4", "--port=8080", "--host=0.0.0.0"]
-```
-
-**docker/scenario-c/opcache.ini**
-
-```
-opcache.enable=1
-opcache.memory_consumption=128
-opcache.interned_strings_buffer=8
-opcache.max_accelerated_files=10000
-opcache.validate_timestamps=0
-opcache.revalidate_freq=0
-opcache.save_comments=0
-opcache.fast_shutdown=1
 ```
 
 ### APÊNDICE C — Scripts de carga do k6
@@ -609,6 +668,15 @@ export const options = {
     'endpoint_compute_duration': ['p(95)<5000'],
     'endpoint_memory_duration':  ['p(95)<5000'],
     'endpoint_db_duration':      ['p(95)<5000'],
+
+    // Submétricas do PATAMAR (força o k6 a exportá-las no summary): RPS = contagem / duração do patamar
+    'http_reqs{phase:plateau}':                    ['count>=0'],
+    'http_req_failed{phase:plateau}':              ['rate<0.05'],
+    'http_req_duration{phase:plateau}':            ['p(99)<60000'],
+    'endpoint_health_duration{phase:plateau}':     ['p(99)<60000'],
+    'endpoint_compute_duration{phase:plateau}':    ['p(99)<60000'],
+    'endpoint_memory_duration{phase:plateau}':     ['p(99)<60000'],
+    'endpoint_db_duration{phase:plateau}':         ['p(99)<60000'],
   },
 };
 
@@ -627,60 +695,72 @@ export default function () {
 }
 ```
 
-**k6/lib/endpoints.js**
+**k6/long.js**
 
 ```javascript
-import http from 'k6/http';
-import { check } from 'k6';
-import { Trend } from 'k6/metrics';
+/**
+ * Long Test — mesmo perfil do load.js com patamar de 30 min (crescimento de memória)
+ *
+ * Distribuição de endpoints:
+ *   10% health  — latência base
+ *   30% compute — CPU-bound puro (sem I/O)
+ *   30% memory  — persistência de estado em memória
+ *   30% db      — persistência de conexão PostgreSQL (principal diferencial Worker Mode)
+ *
+ * Métricas via Prometheus remote_write → Grafana: http://localhost:3000
+ *
+ * Execução:
+ *   docker compose --profile scenario-X run --rm k6 \
+ *     run /scripts/load.js -e TARGET_URL=http://app-X:8080
+ */
 
-export const healthDuration  = new Trend('endpoint_health_duration',  true);
-export const computeDuration = new Trend('endpoint_compute_duration', true);
-export const memoryDuration  = new Trend('endpoint_memory_duration',  true);
-export const dbDuration      = new Trend('endpoint_db_duration',      true);
+import { testHealth, testCompute, testMemory, testDb } from './lib/endpoints.js';
 
-const BASE_URL = __ENV.TARGET_URL || 'http://localhost:8080';
+export const options = {
+  stages: [
+    { duration: '2m',  target: 10  },  // aquecimento
+    { duration: '2m',  target: 100 },  // rampa de carga
+    { duration: '30m', target: 100 },  // pico sustentado (teste longo de memória)
+    { duration: '1m',  target: 0   },  // desaceleração
+  ],
 
-export function testHealth() {
-  const res = http.get(`${BASE_URL}/health`, { tags: { endpoint: 'health' } });
-  healthDuration.add(res.timings.duration);
-  check(res, {
-    'health: status 200':         (r) => r.status === 200,
-    'health: body has status ok': (r) => r.json('status') === 'ok',
-  });
-  return res;
-}
+  // Tag global: todas as métricas enviadas ao Prometheus carregam o label `scenario`.
+  // Permite filtrar por cenário no Grafana mesmo com o TSDB acumulando múltiplos runs.
+  tags: {
+    scenario: __ENV.SCENARIO_NAME || 'unknown',
+  },
 
-export function testCompute() {
-  const res = http.get(`${BASE_URL}/compute`, { tags: { endpoint: 'compute' } });
-  computeDuration.add(res.timings.duration);
-  check(res, {
-    'compute: status 200':          (r) => r.status === 200,
-    'compute: body has data array': (r) => Array.isArray(r.json('data')),
-  });
-  return res;
-}
+  thresholds: {
+    http_req_failed:             ['rate<0.05'],
+    http_req_duration:           ['p(99)<5000'],
+    'endpoint_health_duration':  ['p(95)<5000'],
+    'endpoint_compute_duration': ['p(95)<5000'],
+    'endpoint_memory_duration':  ['p(95)<5000'],
+    'endpoint_db_duration':      ['p(95)<5000'],
 
-export function testMemory() {
-  const res = http.get(`${BASE_URL}/memory`, { tags: { endpoint: 'memory' } });
-  memoryDuration.add(res.timings.duration);
-  check(res, {
-    'memory: status 200':     (r) => r.status === 200,
-    'memory: counter exists': (r) => r.json('counter') > 0,
-    'memory: pid exists':     (r) => r.json('pid') > 0,
-  });
-  return res;
-}
+    // Submétricas do PATAMAR (força o k6 a exportá-las no summary): RPS = contagem / duração do patamar
+    'http_reqs{phase:plateau}':                    ['count>=0'],
+    'http_req_failed{phase:plateau}':              ['rate<0.05'],
+    'http_req_duration{phase:plateau}':            ['p(99)<60000'],
+    'endpoint_health_duration{phase:plateau}':     ['p(99)<60000'],
+    'endpoint_compute_duration{phase:plateau}':    ['p(99)<60000'],
+    'endpoint_memory_duration{phase:plateau}':     ['p(99)<60000'],
+    'endpoint_db_duration{phase:plateau}':         ['p(99)<60000'],
+  },
+};
 
-export function testDb() {
-  const res = http.get(`${BASE_URL}/db`, { tags: { endpoint: 'db' } });
-  dbDuration.add(res.timings.duration);
-  check(res, {
-    'db: status 200':      (r) => r.status === 200,
-    'db: item returned':   (r) => r.json('item') !== null,
-    'db: item has id':     (r) => r.json('item.id') > 0,
-  });
-  return res;
+export default function () {
+  const rand = Math.random();
+
+  if (rand < 0.10) {
+    testHealth();
+  } else if (rand < 0.40) {
+    testCompute();
+  } else if (rand < 0.70) {
+    testMemory();
+  } else {
+    testDb();
+  }
 }
 ```
 
@@ -733,7 +813,154 @@ export default function () {
 }
 ```
 
-### APÊNDICE D — Scripts de automação dos testes
+**k6/lib/endpoints.js**
+
+```javascript
+import http from 'k6/http';
+import { check } from 'k6';
+import { Trend } from 'k6/metrics';
+import exec from 'k6/execution';
+
+export const healthDuration  = new Trend('endpoint_health_duration',  true);
+export const computeDuration = new Trend('endpoint_compute_duration', true);
+export const memoryDuration  = new Trend('endpoint_memory_duration',  true);
+export const dbDuration      = new Trend('endpoint_db_duration',      true);
+
+const BASE_URL = __ENV.TARGET_URL || 'http://localhost:8080';
+
+// Fase do teste, por tempo decorrido (s): warmup -> ramp -> plateau -> rampdown.
+// Padrão = stages de load.js (2m + 2m + 10m + 1m). O patamar (plateau) é a janela de análise dos resultados.
+const WARMUP_S  = Number(__ENV.WARMUP_S  || 120);
+const RAMP_S    = Number(__ENV.RAMP_S    || 120);
+const PLATEAU_S = Number(__ENV.PLATEAU_S || 600);
+export function phase() {
+  const t = exec.instance.currentTestRunDuration / 1000;
+  if (t < WARMUP_S) return 'warmup';
+  if (t < WARMUP_S + RAMP_S) return 'ramp';
+  if (t < WARMUP_S + RAMP_S + PLATEAU_S) return 'plateau';
+  return 'rampdown';
+}
+
+export function testHealth() {
+  const ph = phase();
+  const res = http.get(`${BASE_URL}/health`, { tags: { endpoint: 'health', phase: ph } });
+  healthDuration.add(res.timings.duration, { phase: ph });
+  check(res, {
+    'health: status 200':         (r) => r.status === 200,
+    'health: body has status ok': (r) => r.json('status') === 'ok',
+  });
+  return res;
+}
+
+export function testCompute() {
+  const ph = phase();
+  const res = http.get(`${BASE_URL}/compute`, { tags: { endpoint: 'compute', phase: ph } });
+  computeDuration.add(res.timings.duration, { phase: ph });
+  check(res, {
+    'compute: status 200':          (r) => r.status === 200,
+    'compute: body has data array': (r) => Array.isArray(r.json('data')),
+  });
+  return res;
+}
+
+export function testMemory() {
+  const ph = phase();
+  const res = http.get(`${BASE_URL}/memory`, { tags: { endpoint: 'memory', phase: ph } });
+  memoryDuration.add(res.timings.duration, { phase: ph });
+  check(res, {
+    'memory: status 200':     (r) => r.status === 200,
+    'memory: counter exists': (r) => r.json('counter') > 0,
+    'memory: pid exists':     (r) => r.json('pid') > 0,
+  });
+  return res;
+}
+
+export function testDb() {
+  const ph = phase();
+  const res = http.get(`${BASE_URL}/db`, { tags: { endpoint: 'db', phase: ph } });
+  dbDuration.add(res.timings.duration, { phase: ph });
+  check(res, {
+    'db: status 200':      (r) => r.status === 200,
+    'db: item returned':   (r) => r.json('item') !== null,
+    'db: item has id':     (r) => r.json('item.id') > 0,
+  });
+  return res;
+}
+```
+
+### APÊNDICE D — Scripts de automação e análise
+
+**scripts/run-completo.sh**
+
+```bash
+#!/usr/bin/env bash
+# run-completo.sh — Experimento completo, em uma única execução e sem intervenção.
+# REGRA: sempre refaz TUDO do zero; qualquer falha aborta a execução inteira (descartar e recomeçar).
+#
+#  0) diagnóstico de persistência por worker (C e D, com 1 e 4 workers)
+#  1) A, B, C, D x 3 (ordem rotativa)        -> results/runs/<c>-run<N>
+#  2) E (B com threads padrão) x 3           -> results/runs/e-run<N>
+#  3) testes longos (30 min no patamar): C e D -> results/runs/<c>-long
+#  4) execuções de captura A-D com print do Grafana (tema claro, min 14:20, fora do patamar) -> results/captura
+# Cada execução: contêineres anteriores derrubados, Prometheus zerado, cache do SO liberado (registro antes/depois), sem rebuild.
+# Amostrador de CPU/RAM (docker stats, ~3 s) durante toda a coleta.
+set -uo pipefail
+cd "$(dirname "$0")/.."
+export NO_BUILD=1
+# Porta do hospedeiro para os testes manuais/diagnóstico (a 8080 pode estar ocupada por outro serviço da máquina)
+export BENCH_PORT="${BENCH_PORT:-18080}"
+(echo >/dev/tcp/127.0.0.1/"$BENCH_PORT") 2>/dev/null && { echo "ERRO: porta $BENCH_PORT já está em uso."; exit 1; }
+for d in $( [[ -n "${CAPTURAS:-}" ]] && echo "" || echo "results/runs results/captura results/diagnostico" ); do
+  [[ -z "$(ls -A "$d" 2>/dev/null)" ]] || { echo "ERRO: $d não está vazio. Arquive antes (mv); a coleta sempre recomeça do zero."; exit 1; }
+done
+echo 3 | sudo -n tee /proc/sys/vm/drop_caches >/dev/null 2>&1 || { echo "ERRO: sudo -n tee /proc/sys/vm/drop_caches não funciona (sudoers)."; exit 1; }
+command -v google-chrome >/dev/null || { echo "ERRO: google-chrome ausente (necessário para os prints)."; exit 1; }
+mkdir -p results/runs results/captura results/diagnostico docs/figuras
+FLAG=$(mktemp); trap 'rm -f "$FLAG"' EXIT
+falha() { echo "FALHA: $1 — coleta ABORTADA. Descarte results/ (arquive) e refaça TUDO."; rm -f "$FLAG"; exit 1; }
+if [[ -z "${CAPTURAS:-}" ]]; then ./scripts/sample-stats.sh results/runs/stats-samples.csv "$FLAG" & fi
+
+if [[ -z "${CAPTURAS:-}" ]]; then
+echo "##### 0) DIAGNÓSTICO DE PERSISTÊNCIA #####"
+for s in c d; do for w in 1 4; do ./scripts/diagnostico-persistencia.sh "$s" "$w" 200 || falha "diagnóstico $s w=$w"; done; done
+
+rodar() {  # <cenário> <teste> <rótulo> <duração-patamar-s>
+  local s="$1" test="$2" dir="results/runs/$3"
+  mkdir -p "$dir"; rm -f results/last-run.json
+  PLATEAU_S="$4" ./scripts/run-scenario.sh "$s" "$test" 2>&1 | tee "$dir/console.log"
+  grep -q "Teste concluído" "$dir/console.log" && [[ -f results/last-run.json ]] || falha "$dir"
+  docker stats --no-stream --format '{{.Name}},{{.CPUPerc}},{{.MemUsage}}' > "$dir/docker-stats-post.csv" 2>/dev/null || true
+  mv results/last-run.json "$dir/"
+  mv results/dashboard-scenario-${s}-${test}-*.html "$dir/" 2>/dev/null
+  mv results/scenario-${s}-${test}-*.txt "$dir/" 2>/dev/null
+  date -Is > "$dir/finished_at"
+}
+echo "##### 1) A,B,C,D x 3 #####"
+for r in 1 2 3; do for s in a b c d; do rodar "$s" load "${s}-run${r}" 600; done; done
+echo "##### 2) E x 3 #####"
+for r in 1 2 3; do rodar e load "e-run${r}" 600; done
+echo "##### 3) LONGOS C e D #####"
+for s in c d; do rodar "$s" long "${s}-long" 1800; done
+
+fi  # fim das etapas 0-3 (puladas ao retomar só as capturas com CAPTURAS="b c d")
+echo "##### 4) CAPTURAS A-D #####"
+URL='http://localhost:3000/d/tcc-uema-benchmark?kiosk&theme=light&from=now-16m&to=now'
+for s in ${CAPTURAS:-a b c d}; do
+  log=results/captura/console-$s.log
+  ( until grep -q "running (14m2" "$log" 2>/dev/null; do sleep 2; done
+    timeout 90 google-chrome --headless=new --no-sandbox --disable-gpu --user-data-dir=/tmp/claude-1000/chrome-prof \
+      --window-size=1600,1140 --virtual-time-budget=20000 --screenshot="docs/figuras/grafana-$s.png" "$URL" >/dev/null 2>&1 ) &
+  CAP_PID=$!
+  rm -f results/last-run.json
+  PLATEAU_S=600 ./scripts/run-scenario.sh "$s" load > "$log" 2>&1
+  wait "$CAP_PID"
+  grep -q "Teste concluído" "$log" && [[ -s docs/figuras/grafana-$s.png ]] || falha "captura $s"
+  mkdir -p results/captura/$s
+  mv results/dashboard-scenario-$s-load-*.html results/scenario-$s-load-*.txt results/last-run.json results/captura/$s/ 2>/dev/null
+done
+docker compose --profile scenario-a --profile scenario-b --profile scenario-c --profile scenario-d --profile scenario-e down --remove-orphans
+rm -f "$FLAG"; echo "COLETA COMPLETA"
+```
 
 **scripts/run-scenario.sh**
 
@@ -770,13 +997,13 @@ if [[ -z "$SCENARIO" ]]; then
   exit 1
 fi
 
-if [[ ! "$SCENARIO" =~ ^[abcd]$ ]]; then
-  echo "Erro: cenário inválido '$SCENARIO'. Use: a, b, c, ou d"
+if [[ ! "$SCENARIO" =~ ^[abcde]$ ]]; then
+  echo "Erro: cenário inválido '$SCENARIO'. Use: a, b, c, d ou e"
   exit 1
 fi
 
-if [[ ! "$TEST" =~ ^(smoke|load)$ ]]; then
-  echo "Erro: teste inválido '$TEST'. Use: smoke ou load"
+if [[ ! "$TEST" =~ ^(smoke|load|long)$ ]]; then
+  echo "Erro: teste inválido '$TEST'. Use: smoke, load ou long"
   exit 1
 fi
 
@@ -805,6 +1032,7 @@ docker compose \
   --profile scenario-b \
   --profile scenario-c \
   --profile scenario-d \
+  --profile scenario-e \
   down --remove-orphans 2>/dev/null || true
 
 # Remove o volume do Prometheus para garantir que cada cenário comece com
@@ -825,25 +1053,24 @@ fi
 if [[ "$NO_CACHE_CLEAR" == false ]]; then
   echo ""
   echo "[2/6] Limpando cache do sistema operacional (page cache, dentries, inodes)..."
-
   if [[ "$(uname)" == "Linux" ]]; then
-    if [[ -w /proc/sys/vm/drop_caches ]]; then
-      # Sincroniza buffers pendentes antes de liberar o cache
-      sync
-      # 3 = libera page cache + dentries + inodes
-      echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null
+    sync
+    echo "   Antes:  $(free -m | awk 'NR==2 {print "buff/cache=" $6 " MiB, livre=" $4 " MiB"}')"
+    # sudo -n: nunca pede senha; exige a regra NOPASSWD para /usr/bin/tee /proc/sys/vm/drop_caches.
+    # Se falhar, ABORTA (a limpeza faz parte do protocolo experimental e não pode ser pulada em silêncio).
+    if echo 3 | sudo -n tee /proc/sys/vm/drop_caches > /dev/null 2>&1; then
+      echo "   Depois: $(free -m | awk 'NR==2 {print "buff/cache=" $6 " MiB, livre=" $4 " MiB"}')"
       echo "   Cache do SO liberado com sucesso."
     else
-      echo "   AVISO: sem permissão para limpar o cache do SO."
-      echo "   Execute: echo 3 | sudo tee /proc/sys/vm/drop_caches"
-      echo "   Ou adicione ao sudoers: $(whoami) ALL=(ALL) NOPASSWD: /usr/bin/tee /proc/sys/vm/drop_caches"
-      echo "   Continuando sem limpeza de cache..."
+      echo "   ERRO: não foi possível limpar o cache do SO sem senha."
+      echo "   Configure uma vez: echo \"$(whoami) ALL=(ALL) NOPASSWD: /usr/bin/tee /proc/sys/vm/drop_caches\" | sudo tee /etc/sudoers.d/drop-caches"
+      echo "   (ou rode com --no-cache-clear para pular conscientemente)."
+      exit 1
     fi
   elif [[ "$(uname)" == "Darwin" ]]; then
-    sudo purge 2>/dev/null && echo "   Cache do macOS liberado (purge)." || \
-      echo "   AVISO: falha ao executar purge. Continuando..."
+    sudo purge 2>/dev/null && echo "   Cache do macOS liberado (purge)." || { echo "   ERRO: purge falhou."; exit 1; }
   else
-    echo "   AVISO: sistema não reconhecido para limpeza de cache."
+    echo "   ERRO: sistema não reconhecido para limpeza de cache."; exit 1
   fi
 else
   echo ""
@@ -858,7 +1085,11 @@ sleep 3
 # --- Passo 4: Subir o cenário + stack de observabilidade ---
 echo ""
 echo "[4/6] Iniciando ${PROFILE} + Prometheus + Grafana + cAdvisor..."
-docker compose --profile "$PROFILE" up -d --build
+if [[ "${NO_BUILD:-0}" == "1" ]]; then
+  docker compose --profile "$PROFILE" up -d
+else
+  docker compose --profile "$PROFILE" up -d --build
+fi
 
 # --- Passo 5: Aguardar o app estar pronto ---
 echo ""
@@ -900,8 +1131,10 @@ docker compose --profile "$PROFILE" run --rm \
   k6 run \
   --out experimental-prometheus-rw \
   --summary-export /results/last-run.json \
+  --summary-trend-stats="avg,min,med,max,p(90),p(95),p(99)" \
   -e TARGET_URL="$TARGET_URL" \
   -e SCENARIO_NAME="$PROFILE" \
+  -e PLATEAU_S="${PLATEAU_S:-600}" \
   "/scripts/${TEST}.js" \
   | tee "${RESULTS_DIR}/scenario-${SCENARIO}-${TEST}-${TIMESTAMP}.txt"
 
@@ -922,72 +1155,67 @@ echo "   docker compose --profile ${PROFILE} down"
 echo "======================================================================"
 ```
 
-**scripts/run-matrix.sh**
-
-```bash
-#!/usr/bin/env bash
-# run-matrix.sh — Executa N rodadas de load test em ordem rotativa (a,b,c,d) e
-# arquiva cada rodada em results/runs/<cenário>-run<N>/ (summary k6, dashboard, log, docker stats, env).
-# Uso: ./scripts/run-matrix.sh [rodadas=3]
-set -uo pipefail
-cd "$(dirname "$0")/.."
-ROUNDS="${1:-3}"
-mkdir -p results/runs
-for r in $(seq 1 "$ROUNDS"); do
-  for s in a b c d; do
-    dir="results/runs/${s}-run${r}"
-    [[ -f "$dir/last-run.json" ]] && { echo "pulando $dir (já existe)"; continue; }
-    mkdir -p "$dir"
-    rm -f results/last-run.json
-    ./scripts/run-scenario.sh "$s" load --no-cache-clear 2>&1 | tee "$dir/console.log"
-    docker stats --no-stream --format '{{.Name}},{{.CPUPerc}},{{.MemUsage}}' > "$dir/docker-stats-post.csv" 2>/dev/null || true
-    mv results/last-run.json "$dir/" 2>/dev/null
-    mv results/dashboard-scenario-${s}-load-*.html "$dir/" 2>/dev/null
-    mv results/scenario-${s}-load-*.txt "$dir/" 2>/dev/null
-    date -Is > "$dir/finished_at"
-  done
-done
-docker compose --profile scenario-a --profile scenario-b --profile scenario-c --profile scenario-d down --remove-orphans
-```
-
-**scripts/run-captura.sh**
-
-```bash
-#!/usr/bin/env bash
-# Rodada extra de captura (Grafana tema claro, Chrome headless). Não entra nas médias oficiais.
-# Tira o print do dashboard no minuto ~14:20 de cada rodada (janela de 16 min mostra a rodada inteira).
-cd "$(dirname "$0")/.."
-URL='http://localhost:3000/d/tcc-uema-benchmark?kiosk&theme=light&from=now-16m&to=now'
-for s in a b c d; do
-  log=results/captura/console-$s.log
-  ( until grep -q "running (14m2" "$log" 2>/dev/null; do sleep 2; done
-    timeout 90 google-chrome --headless=new --no-sandbox --disable-gpu --user-data-dir=/tmp/claude-1000/chrome-prof \
-      --window-size=1600,1140 --virtual-time-budget=20000 --screenshot="docs/figuras/grafana-$s.png" "$URL" >/dev/null 2>&1 ) &
-  ./scripts/run-scenario.sh "$s" load --no-cache-clear > "$log" 2>&1
-  wait
-  mkdir -p results/captura/$s
-  mv results/dashboard-scenario-$s-load-*.html results/scenario-$s-load-*.txt results/last-run.json results/captura/$s/ 2>/dev/null
-done
-docker compose --profile scenario-a --profile scenario-b --profile scenario-c --profile scenario-d down --remove-orphans
-```
-
 **scripts/sample-stats.sh**
 
 ```bash
 #!/usr/bin/env bash
-# sample-stats.sh — amostra docker stats a cada 5 s (timestamp,container,cpu%,mem) durante a matriz
-OUT="${1:-results/runs/stats-samples.csv}"
+# sample-stats.sh — amostra docker stats (ts,container,cpu%,mem) a cada ~5 s até o arquivo-sinalizador sumir.
+# Uso: sample-stats.sh <saida.csv> <arquivo-sinalizador>
+OUT="${1:-results/runs/stats-samples.csv}"; FLAG="${2:-/tmp/sampling.flag}"
 echo "ts,name,cpu_pct,mem_usage" > "$OUT"
-while pgrep -f run-matrix.sh >/dev/null; do
+while [[ -f "$FLAG" ]]; do
   ts=$(date +%s)
-  docker stats --no-stream --format '{{.Name}},{{.CPUPerc}},{{.MemUsage}}' 2>/dev/null | grep -E 'app-[abcd]|nginx-a' | sed "s/^/$ts,/" >> "$OUT"
-  sleep 5
+  docker stats --no-stream --format '{{.Name}},{{.CPUPerc}},{{.MemUsage}}' 2>/dev/null | grep -E 'app-[a-f]|nginx-a' | sed "s/^/$ts,/" >> "$OUT"
+  sleep 3
 done
+```
+
+**scripts/diagnostico-persistencia.sh**
+
+```bash
+#!/usr/bin/env bash
+# Diagnóstico de persistência por worker: N requisições sequenciais e concorrentes a /memory e /db.
+# Uso: ./scripts/diagnostico-persistencia.sh <c|d> <workers> [N=200]  -> results/diagnostico/<cenário>-w<workers>.json
+set -uo pipefail
+cd "$(dirname "$0")/.."
+S="$1"; W="$2"; N="${3:-200}"; OUT=results/diagnostico; mkdir -p "$OUT"
+docker compose --profile scenario-a --profile scenario-b --profile scenario-c --profile scenario-d --profile scenario-e down --remove-orphans >/dev/null 2>&1
+if [[ "$S" == c ]]; then FRANKENPHP_WORKERS=$W docker compose --profile scenario-c up -d >/dev/null 2>&1
+else OCTANE_WORKERS=$W docker compose --profile scenario-d up -d >/dev/null 2>&1; fi
+for i in $(seq 1 60); do curl -sf localhost:${BENCH_PORT:-8080}/health >/dev/null && break; sleep 1; done
+curl -s localhost:${BENCH_PORT:-8080}/memory >/dev/null; curl -s localhost:${BENCH_PORT:-8080}/db >/dev/null   # aquecimento (descartado do reinício)
+seqf=$(mktemp); conf=$(mktemp)
+for i in $(seq 1 "$N"); do echo "$(curl -s localhost:${BENCH_PORT:-8080}/memory)"; echo "$(curl -s localhost:${BENCH_PORT:-8080}/db)"; done > "$seqf"
+for i in $(seq 1 "$N"); do echo memory; echo db; done | xargs -P 16 -I{} curl -s -w '\n' localhost:${BENCH_PORT:-8080}/{} > "$conf"
+python3 -I - "$seqf" "$conf" "$S" "$W" "$OUT/$S-w$W.json" <<'PY'
+import sys,json,collections
+sq,cf,s,w,out=sys.argv[1:6]
+def parse(f):
+    mem=collections.defaultdict(list); db=collections.defaultdict(set); n=0
+    txt=open(f).read(); dec=json.JSONDecoder(); i=0
+    while i<len(txt):
+        while i<len(txt) and txt[i] in " \n": i+=1
+        if i>=len(txt): break
+        try: d,i=dec.raw_decode(txt,i)
+        except Exception: i+=1; continue
+        if not isinstance(d, dict): continue
+        if 'counter' in d: mem[d['worker']].append(d['counter'])
+        elif d.get('item'): db[d['worker']].add(d['item']['pg_pid'])
+    return {k:{'n':len(v),'contador_min':min(v),'contador_max':max(v),'reinicios':sum(1 for a,b in zip(v,v[1:]) if b<=a)} for k,v in mem.items()}, {k:sorted(v) for k,v in db.items()}
+r={}
+for nome,f in (("sequencial",sq),("concorrente",cf)):
+    m,d=parse(f); r[nome]={"workers_distintos_memory":len(m),"memory":m,"db_pg_pids_por_worker":d}
+if not any(r[k]['memory'] for k in r): sys.exit('diagnóstico sem dados (aplicação não respondeu)')
+json.dump({"cenario":s,"workers":int(w),**r},open(out,'w'),indent=1,ensure_ascii=False)
+for nome in ("sequencial","concorrente"):
+    x=r[nome]; print(f"{s.upper()} workers={w} {nome}: workers vistos={x['workers_distintos_memory']}; por worker:", {k:(v['n'],v['contador_max'],v['reinicios']) for k,v in x['memory'].items()}, "| pg_pids por worker:", {k:len(v) for k,v in x['db_pg_pids_por_worker'].items()})
+PY
+docker compose --profile scenario-c --profile scenario-d down --remove-orphans >/dev/null 2>&1
 ```
 
 **scripts/analyze.py**
 
-```bash
+```python
 #!/usr/bin/env python3
 """Agrega as rodadas em results/runs/<cenário>-run<N>/last-run.json (k6 --summary-export)
 e gera tabelas (Markdown/CSV) e figuras (PNG) em results/analysis/.
@@ -1010,9 +1238,10 @@ NOMES = {
     "b": "B — CI4 + FrankenPHP clássico",
     "c": "C — CI4 + FrankenPHP Worker",
     "d": "D — Laravel Octane",
+    "e": "E — CI4 + FrankenPHP clássico (threads padrão)",
 }
 ENDPOINTS = ["health", "compute", "memory", "db"]
-CORES = {"a": "#8c8c8c", "b": "#4c78a8", "c": "#e07b39", "d": "#59a14f"}
+CORES = {"a": "#8c8c8c", "b": "#4c78a8", "c": "#e07b39", "d": "#59a14f", "e": "#b07aa1"}
 
 
 def load():
@@ -1067,6 +1296,67 @@ def recursos():
     return res
 
 
+def estatistica(data):
+    """ANOVA de um fator e testes t de Welch par a par (n=3 por cenário: poder baixo, ver ressalva no texto)."""
+    try:
+        from scipy import stats
+    except ImportError:
+        print("scipy ausente: estatística não gerada")
+        return
+    pares = [("b", "a"), ("e", "b"), ("c", "a"), ("c", "b"), ("c", "e"), ("d", "c")]
+    out = ["# Testes estatísticos (n=3 por cenário)", ""]
+    for chave, rot in (("rps", "RPS"), ("p95", "Latência p95"), ("p99", "Latência p99")):
+        grupos = [[r[chave] for r in data[s]] for s in data if len(data[s]) > 1]
+        f, p = stats.f_oneway(*grupos)
+        out += [f"## {rot}", f"ANOVA: F = {f:.1f}, p = {p:.2e}", "", "| Comparação | diferença (%) | t (Welch) | p | p ajustado (Bonferroni) |", "|---|---|---|---|---|"]
+        for a_, b_ in pares:
+            xa, xb = [r[chave] for r in data[a_]], [r[chave] for r in data[b_]]
+            t, pv = stats.ttest_ind(xa, xb, equal_var=False)
+            dif = (st.mean(xa) / st.mean(xb) - 1) * 100
+            out.append(f"| {a_.upper()} vs {b_.upper()} | {dif:+.1f} | {t:.1f} | {pv:.2e} | {min(1, pv * len(pares)):.2e} |")
+        out.append("")
+    (OUT / "estatistica.md").write_text("\n".join(out))
+
+
+def longos():
+    """Teste de 30 min (c-long, d-long): RAM e CPU em janelas de 5 min do patamar, a partir de stats-samples.csv."""
+    from datetime import datetime
+    amostras = list(csv.DictReader(open(RUNS / "stats-samples.csv")))
+    out = ["| Cenário | RPS | p95 (ms) | p99 (ms) | RAM 1ª janela (MiB) | RAM última janela (MiB) | RAM pico (MiB) |", "|---|---|---|---|---|---|---|"]
+    series = {}
+    for s in ("c", "d"):
+        d = RUNS / f"{s}-long"
+        if not (d / "last-run.json").exists():
+            continue
+        m = json.load(open(d / "last-run.json"))["metrics"]
+        fim = datetime.fromisoformat((d / "finished_at").read_text().strip()).timestamp()
+        ini = fim - 35 * 60 + 4 * 60   # início do patamar (2 min + 2 min de rampa)
+        fimp = fim - 60                # fim do patamar
+        pts = []
+        for r in amostras:
+            ts = int(r["ts"])
+            if r["name"] != f"tcc-uema-app-{s}-1" or not (ini <= ts <= fimp):
+                continue
+            mem = r["mem_usage"].split("/")[0].strip()
+            pts.append(((ts - ini) / 60, float(re.sub("[^0-9.]", "", mem)) * (1024 if "GiB" in mem else 1),
+                        float(r["cpu_pct"].rstrip("%"))))
+        series[s] = pts
+        if not pts:
+            continue
+        prim = [p[1] for p in pts if p[0] <= 5]
+        ult = [p[1] for p in pts if p[0] >= 25]
+        out.append(f"| {NOMES[s]} | {m['http_reqs']['rate']:.1f} | {m['http_req_duration']['p(95)']:.1f} | "
+                   f"{m['http_req_duration']['p(99)']:.1f} | {st.mean(prim):.1f} | {st.mean(ult):.1f} | {max(p[1] for p in pts):.1f} |")
+    (OUT / "tabela_longos.md").write_text("\n".join(out) + "\n")
+    with open(OUT / "longos_ram.csv", "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["cenario", "minuto_patamar", "ram_mib", "cpu_pct"])
+        for s, pts in series.items():
+            for t, ram, cpu in pts:
+                w.writerow([s, f"{t:.2f}", ram, cpu])
+    globals()["_SERIES"] = series
+
+
 def ms(vals):
     vals = [v for v in vals if v == v]
     if not vals:
@@ -1116,11 +1406,14 @@ def main():
 
     # Ganhos relativos de RPS
     ganhos = []
-    for a_, b_ in [("b", "a"), ("c", "a"), ("c", "b"), ("c", "d"), ("d", "a")]:
+    for a_, b_ in [("b", "a"), ("e", "b"), ("c", "a"), ("c", "b"), ("c", "e"), ("d", "c"), ("d", "a")]:
         if a_ in agg and b_ in agg:
             g = (agg[a_]["rps"][0] / agg[b_]["rps"][0] - 1) * 100
             ganhos.append(f"{a_.upper()} vs {b_.upper()}: {g:+.1f}% RPS")
     (OUT / "ganhos.txt").write_text("\n".join(ganhos) + "\n")
+
+    estatistica(data)
+    longos()
 
     # Figuras
     try:
@@ -1168,6 +1461,17 @@ def main():
         fig.tight_layout()
         fig.savefig(OUT / "fig_recursos.png", dpi=200)
         plt.close(fig)
+    if globals().get("_SERIES"):
+        fig, ax = plt.subplots(figsize=(7.5, 4))
+        for s, pts in _SERIES.items():
+            ax.plot([p[0] for p in pts], [p[1] for p in pts], color=CORES[s], label=NOMES[s].split(" — ")[0], lw=1.2)
+        ax.set_xlabel("Tempo no patamar (min)")
+        ax.set_ylabel("RAM do contêiner (MiB)")
+        ax.set_ylim(bottom=0)
+        ax.legend(title="Cenário")
+        fig.tight_layout()
+        fig.savefig(OUT / "fig_ram_longo.png", dpi=200)
+        plt.close(fig)
     print("OK:", OUT)
 
 
@@ -1175,7 +1479,7 @@ if __name__ == "__main__":
     main()
 ```
 
-### APÊNDICE E — Controlador dos endpoints (CodeIgniter 4)
+### APÊNDICE E — Controladores dos endpoints
 
 **apps/ci4-base/app/Controllers/BenchmarkController.php**
 
@@ -1224,10 +1528,12 @@ class BenchmarkController extends Controller
         // Propriedade estática sobrevive ao loop do Worker Mode (mesma instância PHP)
         // Em PHP-FPM/Classic: reinicia a cada request (processo novo ou sem estado persistente)
         MemoryState::$counter++;
+        MemoryState::$worker ??= bin2hex(random_bytes(4));
 
         $this->response->setHeader('Content-Type', 'application/json');
         echo json_encode([
             'counter'  => MemoryState::$counter,
+            'worker'   => MemoryState::$worker,
             'pid'      => getmypid(),
             'scenario' => getenv('SCENARIO_NAME') ?: 'unknown',
         ]);
@@ -1252,6 +1558,7 @@ class BenchmarkController extends Controller
         echo json_encode([
             'item'     => $row,
             'php_pid'  => getmypid(),
+            'worker'   => (MemoryState::$worker ??= bin2hex(random_bytes(4))),
             'scenario' => getenv('SCENARIO_NAME') ?: 'unknown',
         ]);
     }
@@ -1260,27 +1567,137 @@ class BenchmarkController extends Controller
 class MemoryState
 {
     public static int $counter = 0;
+    public static ?string $worker = null; // identifica o worker (thread) que atende a requisição
+}
+```
+
+**apps/laravel-octane/app/Http/Controllers/BenchmarkController.php**
+
+```php
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\JsonResponse;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
+
+class BenchmarkController extends Controller
+{
+    private static int $counter = 0;
+    private static ?string $worker = null; // identifica o worker que atende a requisição
+
+    public function health(): JsonResponse
+    {
+        return response()->json([
+            'status'   => 'ok',
+            'scenario' => env('SCENARIO_NAME', 'scenario-d'),
+        ]);
+    }
+
+    public function compute(): JsonResponse
+    {
+        $size = (int) env('COMPUTE_SIZE', 1000);
+        $data = [];
+
+        for ($i = 0; $i < $size; $i++) {
+            $data[] = [
+                'id'    => $i + 1,
+                'uuid'  => md5(uniqid((string) $i, true)),
+                'value' => random_int(1, 999999),
+                'label' => str_repeat('x', random_int(5, 20)),
+            ];
+        }
+
+        return response()->json([
+            'count'    => $size,
+            'scenario' => env('SCENARIO_NAME', 'scenario-d'),
+            'data'     => $data,
+        ]);
+    }
+
+    public function memory(): JsonResponse
+    {
+        self::$counter++;
+        self::$worker ??= bin2hex(random_bytes(4));
+
+        return response()->json([
+            'counter'  => self::$counter,
+            'worker'   => self::$worker,
+            'pid'      => getmypid(),
+            'scenario' => env('SCENARIO_NAME', 'scenario-d'),
+        ]);
+    }
+
+    public function db(): JsonResponse
+    {
+        $id = random_int(1, 10000);
+
+        // pg_backend_pid() incluído na mesma query — sem round-trip extra.
+        // Mesmo papel do endpoint /memory: prova persistência, mas agora
+        // no nível da conexão PostgreSQL em vez do estado PHP em memória.
+        $row = DB::selectOne(
+            'SELECT id, name, value, pg_backend_pid() AS pg_pid FROM benchmark_items WHERE id = ?',
+            [$id]
+        );
+
+        return response()->json([
+            'item'     => $row,
+            'php_pid'  => getmypid(),
+            'worker'   => (self::$worker ??= bin2hex(random_bytes(4))),
+            'scenario' => env('SCENARIO_NAME', 'scenario-d'),
+        ]);
+    }
 }
 ```
 
 ### APÊNDICE F — Resultados por execução
 
-**Tabela F1 – Resultados de cada uma das 12 execuções**
+**Tabela F1 – Resultados de cada uma das 15 execuções de 15 minutos**
 
-| Execução | RPS | Latência p50 (ms) | Latência p95 (ms) | Erros (%) |
-|---|---|---|---|---|
-| A – execução 1 | 124.9 | 786.4 | 896.9 | 0.00 |
-| A – execução 2 | 126.5 | 783.4 | 890.4 | 0.00 |
-| A – execução 3 | 127.8 | 723.8 | 885.4 | 0.00 |
-| B – execução 1 | 109.2 | 881.7 | 1005.9 | 0.00 |
-| B – execução 2 | 109.2 | 878.6 | 1002.2 | 0.00 |
-| B – execução 3 | 110.1 | 873.0 | 998.4 | 0.00 |
-| C – execução 1 | 291.5 | 307.6 | 399.7 | 0.00 |
-| C – execução 2 | 289.8 | 308.4 | 399.7 | 0.00 |
-| C – execução 3 | 281.9 | 307.6 | 493.0 | 0.00 |
-| D – execução 1 | 368.6 | 277.2 | 313.6 | 0.00 |
-| D – execução 2 | 366.6 | 277.6 | 318.4 | 0.00 |
-| D – execução 3 | 370.8 | 272.7 | 312.3 | 0.00 |
+| Execução | RPS | Latência p50 (ms) | Latência p95 (ms) | Latência p99 (ms) | Erros (%) |
+|---|---|---|---|---|---|
+| A – execução 1 | 144.1 | 686.5 | 782.9 | 797.3 | 0.00 |
+| A – execução 2 | 143.2 | 688.2 | 787.5 | 802.7 | 0.00 |
+| A – execução 3 | 143.9 | 687.6 | 786.4 | 801.4 | 0.00 |
+| B – execução 1 | 154.7 | 605.3 | 710.4 | 792.6 | 0.00 |
+| B – execução 2 | 157.5 | 600.3 | 704.2 | 766.5 | 0.00 |
+| B – execução 3 | 156.3 | 602.5 | 715.5 | 789.5 | 0.00 |
+| C – execução 1 | 314.3 | 301.4 | 394.8 | 406.8 | 0.00 |
+| C – execução 2 | 314.9 | 301.2 | 394.1 | 405.4 | 0.00 |
+| C – execução 3 | 325.2 | 297.9 | 393.4 | 404.7 | 0.00 |
+| D – execução 1 | 350.4 | 287.6 | 375.2 | 397.0 | 0.00 |
+| D – execução 2 | 352.2 | 287.9 | 375.5 | 396.8 | 0.00 |
+| D – execução 3 | 351.3 | 287.2 | 373.2 | 396.5 | 0.00 |
+| E – execução 1 | 175.8 | 524.3 | 658.5 | 710.1 | 0.00 |
+| E – execução 2 | 173.6 | 525.4 | 675.8 | 742.1 | 0.00 |
+| E – execução 3 | 177.0 | 524.2 | 647.4 | 709.8 | 0.00 |
+
+Fonte: elaborado pelo autor (2026). Nota: estatísticas sobre toda a execução, incluindo as rampas.
+
+**Tabela F2 – Resultados dos testes longos de 30 minutos de patamar**
+
+| Teste | RPS | Latência p50 (ms) | Latência p95 (ms) | Latência p99 (ms) | Erros (%) |
+|---|---|---|---|---|---|
+| C – teste longo (30 min) | 310.1 | 306.3 | 396.1 | 406.7 | 0.00 |
+| D – teste longo (30 min) | 346.8 | 293.9 | 376.5 | 397.0 | 0.00 |
 
 Fonte: elaborado pelo autor (2026).
 
+### APÊNDICE G — Ambiente de execução
+
+Saída dos comandos de inspeção do hospedeiro, registrada pelo autor antes da coleta.
+
+```
+Linux andre-vaio 7.0.0-38-generic #38-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 09:10:14 UTC 2026 x86_64 GNU/Linux
+CPU(s):                                    16
+Nome do modelo:                            AMD Ryzen 7 5700U with Radeon Graphics
+               total       usada       livre    compart.  buff/cache  disponível
+Mem.:           14Gi       8,0Gi       5,1Gi       347Mi       2,1Gi       6,5Gi
+Swap:          4,0Gi       2,7Gi       1,3Gi
+Docker version 28.1.1, build 4eba377
+Docker Compose version v2.31.0-desktop.2
+FrankenPHP v1.13.0 PHP 8.3.35 Caddy v2.11.7 h1:yj0Y4fYZGPkSv
+PHP 8.3.35 (cli) (built: Oct  6 2026 01:29:10) (ZTS)
+PHP 8.3.35 (cli) (built: Sep 25 2026 17:44:10) (NTS)
+```
