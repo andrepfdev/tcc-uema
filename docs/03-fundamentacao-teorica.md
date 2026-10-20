@@ -6,9 +6,9 @@ No modelo tradicional, o PHP processa cada requisição de forma independente: o
 
 ### 2.2 FrankenPHP: modo clássico e modo Worker
 
-O FrankenPHP é um servidor de aplicação para PHP construído sobre o servidor Caddy, que incorpora o interpretador PHP ao próprio processo do servidor (DUNGALAS, 2024). Sem nenhuma configuração adicional, opera no **modo clássico**, em que funciona como um servidor PHP tradicional, servindo diretamente os arquivos PHP, e pode substituir o PHP-FPM ou o Apache com `mod_php`. O número de conexões aceitas e enfileiradas é limitado apenas pelos recursos do sistema, e o PHP usa um número fixo de *threads* iniciadas na partida, comparável ao modo estático do PHP-FPM (DUNGALAS, 2024).
+O FrankenPHP é um servidor de aplicação para PHP construído sobre o servidor Caddy, que incorpora o interpretador PHP ao próprio processo do servidor (DUNGLAS, 2024). Sem nenhuma configuração adicional, opera no **modo clássico**, em que funciona como um servidor PHP tradicional, servindo diretamente os arquivos PHP, e pode substituir o PHP-FPM ou o Apache com `mod_php`. O número de conexões aceitas e enfileiradas é limitado apenas pelos recursos do sistema, e o PHP usa um número fixo de *threads* iniciadas na partida, comparável ao modo estático do PHP-FPM (DUNGLAS, 2024).
 
-No **modo Worker**, o *script* de entrada da aplicação é carregado uma única vez e permanece vivo, atendendo requisições em um laço: a inicialização do *framework* ocorre uma vez por *worker*, e cada requisição executa apenas o tratamento do pedido (DUNGALAS, 2024). A contrapartida é que o programador passa a ser responsável por não vazar estado de uma requisição para outra, já que objetos e variáveis estáticas podem sobreviver entre elas.
+No **modo Worker**, o *script* de entrada da aplicação é carregado uma única vez e permanece vivo, atendendo requisições em um laço: a inicialização do *framework* ocorre uma vez por *worker*, e cada requisição executa apenas o tratamento do pedido (DUNGLAS, 2024). A contrapartida é que o programador passa a ser responsável por não vazar estado de uma requisição para outra, já que objetos e variáveis estáticas podem sobreviver entre elas.
 
 ### 2.3 Laravel Octane e suporte do CodeIgniter 4 ao modo Worker
 

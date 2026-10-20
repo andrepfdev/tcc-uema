@@ -6,7 +6,7 @@ BRUNST, Holger et al. **First Experiences in Performance Benchmarking with the N
 
 CODEIGNITER FOUNDATION. **CodeIgniter 4 User Guide**. 2024. Disponível em: https://codeigniter.com/user_guide/. Acesso em: 19 out. 2026.
 
-DUNGALAS, Kévin. **FrankenPHP: The Modern Application Server for PHP**. LesTilleuls.coop, 2024. Disponível em: https://frankenphp.dev/docs/. Acesso em: 19 out. 2026.
+DUNGLAS, Kévin. **FrankenPHP: The Modern Application Server for PHP**. LesTilleuls.coop, 2024. Disponível em: https://frankenphp.dev/docs/. Acesso em: 19 out. 2026.
 
 GRAFANA LABS. **k6 Documentation: Load Testing for Engineering Teams**. 2024. Disponível em: https://grafana.com/docs/k6/latest/using-k6/metrics/. Acesso em: 19 out. 2026.
 
