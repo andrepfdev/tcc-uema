@@ -21,7 +21,7 @@ ir também como resumo estendido (duplicidade desclassifica); por isso não há 
 - `artigo/corpo.tex`: texto do artigo. `referencias.tex`, `declaracao-ia.tex`: referências e declaração de IA.
 - `artigo/gerar.py`: gera `cotb2027-cego.tex` (avaliação, anônimo) e `cotb2027-final.tex` (camera-ready).
 - `artigo/figuras/`: figuras geradas por `scripts/analyze_cotb.py` (n = 5 e taxa fixa; não vêm de `docs/figuras/`).
-- **Dados do artigo** (além dos do TCC): `results/cotb/` (taxa fixa de 100 req/s, 3 execuções por cenário; repetições 4 e 5 da carga fechada) e `results/cotb/analysis/` (tabelas, IC95%, Welch/Holm, Mann–Whitney, compatibilidade dos blocos temporais). Coleta: `scripts/run-cotb.sh` (20/out/2026). O TCC entregue segue com n = 3 e carga fechada, e não foi alterado.
+- **Dados do artigo** (além dos do TCC): `results/cotb/` (taxa fixa de 100 req/s, 3 execuções por cenário; repetições 4 e 5 da carga fechada) e `results/cotb/analysis/` (tabelas, IC95%, Welch/Holm, Mann–Whitney, compatibilidade dos blocos temporais). Coleta: `scripts/run-cotb.sh` (20/out/2026). As métricas de desempenho do artigo (RPS, percentis, latências) são do **patamar** de cada execução (10 min na carga fechada, 8 min na taxa fixa), com RPS = requisições do patamar / duração do patamar. O TCC entregue segue com n = 3 e carga fechada, e não foi alterado.
 
 ## Como gerar os PDFs (Overleaf)
 0. (Só se os dados mudarem) `python3 scripts/analyze_cotb.py`.
