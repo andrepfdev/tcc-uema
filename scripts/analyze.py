@@ -22,6 +22,7 @@ NOMES = {
     "d": "D — Laravel Octane",
     "e": "E — CI4 + FrankenPHP clássico (threads padrão)",
 }
+PLATEAU_S = 600  # duração do patamar (s) nas execuções de 15 min
 ENDPOINTS = ["health", "compute", "memory", "db"]
 CORES = {"a": "#8c8c8c", "b": "#4c78a8", "c": "#e07b39", "d": "#59a14f", "e": "#b07aa1"}
 
@@ -31,17 +32,19 @@ def load():
     for p in sorted(RUNS.glob("*-run*/last-run.json")):
         s = p.parent.name.split("-")[0]
         m = json.load(open(p))["metrics"]
+        sf = "{phase:plateau}"  # patamar de 10 min (aquecimento, rampa e descida excluídos)
+        dur = m[f"http_req_duration{sf}"]
         run = {
-            "rps": m["http_reqs"]["rate"],
-            "reqs": m["http_reqs"]["count"],
-            "err": m["http_req_failed"].get("value", m["http_req_failed"].get("rate", 0)),
-            "avg": m["http_req_duration"]["avg"],
-            "p50": m["http_req_duration"]["med"],
-            "p95": m["http_req_duration"]["p(95)"],
-            "p99": m["http_req_duration"].get("p(99)", float("nan")),
+            "rps": m[f"http_reqs{sf}"]["count"] / PLATEAU_S,   # o campo `rate` da submétrica divide pela duração total
+            "reqs": m[f"http_reqs{sf}"]["count"],
+            "err": m[f"http_req_failed{sf}"].get("value", m[f"http_req_failed{sf}"].get("rate", 0)),
+            "avg": dur["avg"],
+            "p50": dur["med"],
+            "p95": dur["p(95)"],
+            "p99": dur.get("p(99)", float("nan")),
         }
         for e in ENDPOINTS:
-            k = f"endpoint_{e}_duration"
+            k = f"endpoint_{e}_duration{sf}"
             if k in m:
                 run[f"{e}_avg"] = m[k]["avg"]
                 run[f"{e}_p95"] = m[k]["p(95)"]
@@ -127,8 +130,9 @@ def longos():
             continue
         prim = [p[1] for p in pts if p[0] <= 5]
         ult = [p[1] for p in pts if p[0] >= 25]
-        out.append(f"| {NOMES[s]} | {m['http_reqs']['rate']:.1f} | {m['http_req_duration']['p(95)']:.1f} | "
-                   f"{m['http_req_duration']['p(99)']:.1f} | {st.mean(prim):.1f} | {st.mean(ult):.1f} | {max(p[1] for p in pts):.1f} |")
+        sf = "{phase:plateau}"  # patamar de 30 min
+        out.append(f"| {NOMES[s]} | {m[f'http_reqs{sf}']['count'] / 1800:.1f} | {m[f'http_req_duration{sf}']['p(95)']:.1f} | "
+                   f"{m[f'http_req_duration{sf}']['p(99)']:.1f} | {st.mean(prim):.1f} | {st.mean(ult):.1f} | {max(p[1] for p in pts):.1f} |")
     (OUT / "tabela_longos.md").write_text("\n".join(out) + "\n")
     with open(OUT / "longos_ram.csv", "w", newline="") as f:
         w = csv.writer(f)
