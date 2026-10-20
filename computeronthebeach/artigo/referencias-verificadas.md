@@ -13,3 +13,8 @@ entre si. Isso sustenta a frase da lacuna, escrita com cautela ("nas buscas real
 
 Não usar (não são verificáveis como referência científica): posts de blog de fornecedores (Deploynix, PHPBenchLab, DEV, Medium)
 e a issue do GitHub, cujos resultados se contradizem sobre qual servidor é mais rápido.
+
+## Decisão final (20/10/2026)
+No artigo entraram Schroeder et al. (NSDI 2006) e a documentação do k6 (modelos aberto e fechado). O benchmark do Lino **não** foi
+citado: é literatura cinzenta sem autoria identificável com certeza e sem metodologia detalhada. A lacuna foi escrita como
+"nas buscas que realizamos, não encontramos estudo revisado por pares…".

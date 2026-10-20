@@ -1,14 +1,14 @@
 \section{Introdução}
 O PHP tradicionalmente executa cada requisição HTTP de forma isolada: o código é carregado, executado e os recursos são liberados ao final. O PHP-FPM mantém um \textit{pool} de processos, mas a inicialização do \textit{framework} (carga de classes, serviços e configuração) se repete a cada acesso, o que limita a vazão em cenários de alta carga. Servidores de aplicação com memória persistente, como o FrankenPHP, mantêm a aplicação carregada e eliminam essa repetição~\cite{dungalas2024}. O Laravel Octane consolidou essa prática no ecossistema Laravel~\cite{otwell2024}, e o CodeIgniter 4 (CI4) passou a oferecer suporte nativo ao modo Worker apenas a partir da versão 4.7~\cite{codeigniter2024}.
 
-Para quem mantém aplicações em CI4, a pergunta prática é se o modo Worker justifica a adoção ou se trocar apenas o servidor, mantendo o modo clássico, já bastaria. Isso importa para a eficiência de recursos em nuvem e para a modernização de sistemas legados sem reescrita, alinhada à inovação em infraestrutura (ODS 9). Este trabalho mede, sob o mesmo orçamento de recursos, a vazão, a latência e o consumo de CPU e memória do CI4 sob PHP-FPM, FrankenPHP clássico e FrankenPHP em modo Worker, usando o Laravel Octane como referência, e verifica o que cada arquitetura preserva entre requisições.
+Para quem mantém aplicações em CI4, a pergunta prática é se o modo Worker justifica a adoção ou se trocar apenas o servidor, mantendo o modo clássico, já bastaria. Isso importa para a eficiência de recursos em nuvem e para a modernização de sistemas legados sem reescrita, alinhada à inovação em infraestrutura (ODS 9). Este trabalho mede, sob o mesmo orçamento de recursos, a capacidade (vazão máxima), a latência sem saturação e o consumo de CPU e memória do CI4 sob PHP-FPM, FrankenPHP clássico e FrankenPHP em modo Worker, usando o Laravel Octane como referência, e verifica o que cada arquitetura preserva entre requisições.
 
 \section{Fundamentação Teórica}
 No modelo tradicional, o PHP não preserva estado entre requisições. Luz et al.~\cite{luz2024} comparam o modelo síncrono do PHP com o assíncrono do Swoole em testes de carga com ANOVA e teste t, e concluem que o modo de operação é o fator determinante do desempenho. O FrankenPHP, construído sobre o servidor Caddy, tem um modo clássico, que substitui o PHP-FPM com um número fixo de \textit{threads}, e um modo Worker, em que o \textit{script} de entrada é carregado uma vez e atende requisições em laço, ao custo de o programador evitar vazamento de estado entre elas~\cite{dungalas2024}. Azzahidi et al.~\cite{azzahidi2025} avaliaram \textit{frameworks} de API REST com k6 e destacaram o Laravel com FrankenPHP pelo uso eficiente de memória.
 
-O CodeIgniter 4 é um \textit{framework} leve, e o suporte nativo ao modo Worker a partir da versão 4.7 introduziu um \textit{script} de entrada próprio, gerado pelo comando \texttt{php spark worker:install}~\cite{codeigniter2024}. Já o Laravel Octane mantém o \textit{framework} inicializado e trata a limpeza do estado entre requisições~\cite{otwell2024}. Os trabalhos citados comparam modelos de execução ou \textit{frameworks} distintos, mas, até onde esta revisão pôde verificar, não isolam o efeito do modo Worker em um mesmo \textit{framework} sob orçamento de recursos idêntico, que é a lacuna abordada aqui.
+O CodeIgniter 4 é um \textit{framework} leve, e o suporte nativo ao modo Worker a partir da versão 4.7 introduziu um \textit{script} de entrada próprio, gerado pelo comando \texttt{php spark worker:install}~\cite{codeigniter2024}. Já o Laravel Octane mantém o \textit{framework} inicializado e trata a limpeza do estado entre requisições~\cite{otwell2024}. Os trabalhos citados comparam modelos de execução ou \textit{frameworks} distintos; nas buscas que realizamos, não encontramos estudo revisado por pares que isole o efeito do modo Worker em um mesmo \textit{framework} sob orçamento de recursos idêntico, que é a lacuna abordada aqui.
 
-Quanto ao rigor, \textit{benchmarks} de \textit{software} são instáveis e exigem repetição e controle do ambiente~\cite{laaber2021}, e comparações dependem de condições idênticas e reprodutíveis~\cite{zhan2022,brunst2022,jia2013}. Em testes de carga de modelo fechado, a latência média de um servidor saturado tende a $N/X$, número de usuários dividido pela vazão (Lei de Little~\cite{little1961}); por isso a latência aqui reflete a vazão e não o custo isolado de cada \textit{endpoint}.
+Quanto ao rigor, \textit{benchmarks} de \textit{software} são instáveis e exigem repetição e controle do ambiente~\cite{laaber2021}, e comparações dependem de condições idênticas e reprodutíveis~\cite{zhan2022,brunst2022,jia2013}. Há ainda uma escolha de modelo de carga. No modelo fechado, um número fixo de usuários só dispara uma nova requisição após a resposta anterior; o servidor lento reduz a própria carga, e o comportamento difere muito do modelo aberto, em que as chegadas independem das respostas~\cite{schroeder2006,grafanaopen}. Num servidor saturado em modelo fechado, a latência média tende a $N/X$, número de usuários dividido pela vazão (Lei de Little~\cite{little1961}): ela mede a fila e não o custo da requisição. Por isso este trabalho usa o modelo fechado para medir a \emph{capacidade} e um teste de taxa de chegada fixa, abaixo da capacidade de todos os cenários, para medir a \emph{latência}.
 
 \section{Materiais e Métodos}
 O estudo é experimental e quantitativo. Foram avaliados quatro cenários, cada um limitado a 1,0 CPU e 512~MB de RAM: (A) CI4~4.7.5 com PHP-FPM (4 processos estáticos) e Nginx~1.31.7, com o orçamento dividido em 0,85~CPU/448~MB e 0,15~CPU/64~MB; (B) o mesmo aplicativo no FrankenPHP~1.13.0 em modo clássico, com 4 \textit{threads}; (C) o mesmo aplicativo no FrankenPHP em modo Worker, com 4 \textit{workers} e o suporte nativo do CI4 4.7; e (D) Laravel~13.36 com Octane~2.22 sobre FrankenPHP, com 4 \textit{workers}. Um cenário complementar de sensibilidade (E) repete o B com o número padrão de \textit{threads}. Todas as imagens de aplicação e servidor web usam a mesma base (Debian 13) e o mesmo PHP 8.3.35, com versões e \textit{digests} fixados; a única diferença de compilação, inerente às arquiteturas, é o PHP \textit{thread-safe} do FrankenPHP contra o não \textit{thread-safe} do PHP-FPM. O OPcache usa a mesma configuração em todos os cenários e o banco é um PostgreSQL~16 idêntico (0,5~CPU, 256~MB), fora do orçamento dos cenários. Os \textit{endpoints} têm o mesmo código nos cenários A, B, C e E (um controlador do CI4), e equivalente no Laravel do cenário D.
@@ -32,91 +32,93 @@ O estudo é experimental e quantitativo. Foram avaliados quatro cenários, cada 
   \end{tabular}
 \end{table}
 
-Os quatro \textit{endpoints} são: \texttt{/health} (resposta mínima), \texttt{/compute} (serialização JSON de 1.000 elementos), \texttt{/memory} (contador estático e PID) e \texttt{/db} (consulta por chave primária e PID da conexão PostgreSQL), na proporção 10/30/30/30\%. A carga foi gerada pelo k6~2.3 em contêiner separado (2,0 CPU), com 15 minutos por execução: rampa até 100 usuários virtuais, patamar de 10 minutos e descida, sem espera entre requisições~\cite{grafana2024}. CPU e RAM foram amostradas com \texttt{docker stats}. A coleta foi automatizada e feita de uma só vez em um notebook com AMD Ryzen~7~5700U e 14~GiB de RAM: diagnóstico de persistência por \textit{worker}; três execuções de cada cenário, em ordem rotativa (A, B, C, D) para reduzir viés de ordem e temperatura, e três do cenário E; e um teste de 30 minutos de patamar para C e D. Antes de cada execução, o \textit{cache} do sistema era limpo e o Prometheus reiniciado. Calcularam-se média e desvio-padrão de vazão, latências p50, p95 e p99, erros, CPU e RAM; como $n=3$ por cenário, aplicaram-se ANOVA e testes t de Welch com correção de Bonferroni apenas como reforço. \repoinfo
+Os quatro \textit{endpoints} são: \texttt{/health} (resposta mínima, sem banco), \texttt{/compute} (serialização JSON de 1.000 elementos), \texttt{/memory} (contador estático e PID) e \texttt{/db} (consulta por chave primária e PID da conexão PostgreSQL), na proporção 10/30/30/30\%. A carga foi gerada pelo k6~2.3 em contêiner separado (2,0 CPU)~\cite{grafana2024}, em dois testes. \emph{(i) Capacidade}, em modelo fechado: 15 minutos por execução, com rampa até 100 usuários virtuais, patamar de 10 minutos e descida, sem espera entre requisições; \emph{n}\,=\,5 execuções por cenário (três em 19/out/2026, em ordem rotativa A, B, C, D para reduzir viés de ordem e temperatura, e duas em 20/out/2026). \emph{(ii) Latência sem saturação}, em modelo aberto (\texttt{constant-arrival-rate}): 100 requisições por segundo, cerca de 70\% da capacidade do cenário A, com 60~s de aquecimento e 8 minutos de patamar, três execuções por cenário; o teste só é válido se nenhuma iteração for descartada, o que se verificou em todas. CPU e RAM foram amostradas com \texttt{docker stats}. Antes de cada execução, o \textit{cache} do sistema era limpo e o Prometheus reiniciado. Também se fez um diagnóstico de persistência por \textit{worker} e um teste de 30 minutos de patamar para C e D. Tudo rodou em um notebook com AMD Ryzen~7~5700U e 14~GiB de RAM, com Docker~28.1.1, e os \textit{scripts} reproduzem a coleta completa. \repoinfo
+
+Para cada cenário calcularam-se média e intervalo de confiança de 95\% (IC, \textit{t} de Student). As comparações par a par usam o teste t de Welch, que dispensa variâncias iguais, com correção de Holm, IC da diferença e, como verificação não paramétrica, Mann--Whitney (com 5 contra 5 observações o menor $p$ possível é 0,0079). Com $n$ pequeno, a normalidade não pode ser verificada; os testes servem para comparar a variação entre execuções no mesmo ambiente, e não generalizam para outro \textit{hardware}.
 
 \section{Resultados}
-Em todas as execuções a taxa de falhas HTTP foi 0,00\%. A Tabela~\ref{tab:global} resume a vazão, a latência de cauda e a memória, e a Figura~\ref{fig:rps} mostra a vazão. O modo Worker do CI4 (C) atingiu 318,1~RPS contra 143,7 do PHP-FPM (A), ganho de 121,4\%, com p95 e p99 cerca de 50\% menores. O modo clássico trouxe ganho pequeno: +8,7\% com 4 \textit{threads} (B) e +22,1\% com o número padrão (E). O Laravel Octane (D) obteve 351,3~RPS, 10,4\% acima de C. A ANOVA indicou diferença entre os cenários na vazão ($F=3311{,}6$; $p<0{,}001$), no p95 e no p99; nos testes par a par com correção de Bonferroni, as diferenças de vazão entre A, B, E e C foram significativas, mas a de D contra C não ($p=0{,}059$ ajustado; $p=0{,}0098$ sem correção), como mostra a Tabela~\ref{tab:pares}. No p99, B não difere de A ($p=0{,}97$ ajustado), o que indica que a troca isolada do servidor pouco altera a latência de cauda.
+Em todas as execuções a taxa de falhas HTTP foi 0,00\%. As duas execuções de 20/out ficaram a menos de 1,5\% das três de 19/out em vazão e p95 em todos os cenários, e por isso foram agrupadas ($n=5$).
+
+\subsection{Capacidade (modelo fechado)}
+A Tabela~\ref{tab:global} e a Figura~\ref{fig:rps} resumem a capacidade. O modo Worker do CI4 (C) atingiu 317,6~RPS contra 143,9 do PHP-FPM (A), ganho de 120,7\% (razão 2,21; IC95\% 2,17--2,24). O modo clássico trouxe ganho pequeno: +8,5\% com 4 \textit{threads} (B) e +22,0\% com o número padrão (E). O Laravel Octane (D) obteve 351,6~RPS, 10,7\% acima de C. Todas as comparações da Tabela~\ref{tab:pares} têm $p<0{,}001$ após a correção de Holm (Mann--Whitney: $p=0{,}0079$, o mínimo possível); a única diferença não significativa é B contra A no p99 ($-1{,}4\%$; $p=0{,}12$). A CPU ficou entre 92,7\% (A) e 100,6\% (D) de um núcleo, ou seja, o gargalo é a CPU, e nenhum cenário passou de 173~MiB de RAM.
 
 \begin{table}[htb]
-  \caption{Comparações par a par (Welch, $n=3$): variação percentual e $p$ ajustado por Bonferroni.}
+  \caption{Capacidade em modelo fechado, 100 usuários virtuais (média e IC95\% de 5 execuções).}
+  \label{tab:global}
+  \centering
+  \footnotesize
+  \setlength{\tabcolsep}{3pt}
+  \begin{tabular}{lrrrrr}
+    \toprule
+    \textbf{Cenário} & \textbf{RPS} & \textbf{p95 (ms)} & \textbf{p99 (ms)} & \textbf{CPU (\%)} & \textbf{RAM (MiB)} \\
+    \midrule
+    A -- PHP-FPM & 143,9 $\pm$ 0,9 & 784,7 $\pm$ 3,4 & 799,4 & 92,7 & 79,1 \\
+    B -- Clássico & 156,2 $\pm$ 1,3 & 714,1 $\pm$ 11,5 & 788,0 & 100,1 & 123,7 \\
+    E -- Clássico, padrão & 175,5 $\pm$ 1,6 & 663,8 $\pm$ 14,3 & 720,7 & 97,5 & 115,7 \\
+    C -- CI4 Worker & 317,6 $\pm$ 5,4 & 393,7 $\pm$ 0,9 & 405,5 & 100,4 & 125,5 \\
+    D -- Octane & 351,6 $\pm$ 1,3 & 373,4 $\pm$ 2,8 & 396,4 & 100,6 & 171,5 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[htb]
+  \caption{Diferenças em modelo fechado: variação percentual e IC95\% da diferença (Welch, $n=5$).}
   \label{tab:pares}
   \centering
   \footnotesize
   \setlength{\tabcolsep}{3pt}
   \begin{tabular}{lrrrr}
     \toprule
-    \textbf{Comparação} & \textbf{RPS} & \textbf{$p$} & \textbf{p95} & \textbf{$p$} \\
+    \textbf{Comparação} & \textbf{RPS} & \textbf{IC95\% (RPS)} & \textbf{p95} & \textbf{IC95\% (ms)} \\
     \midrule
-    B contra A & +8,7\%   & 0,012 & $-9,6$\%  & 0,003 \\
-    E contra B & +12,4\%  & 0,001 & $-7,0$\%  & 0,099 \\
-    C contra A & +121,4\% & 0,002 & $-49,8$\% & $<0,001$ \\
-    C contra E & +81,3\%  & 0,002 & $-40,3$\% & 0,006 \\
-    D contra C & +10,4\%  & 0,059 & $-4,9$\%  & $<0,001$ \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\begin{table}[htb]
-  \caption{Desempenho por cenário (média de 3 execuções, 100 usuários virtuais).}
-  \label{tab:global}
-  \centering
-  \footnotesize
-  \setlength{\tabcolsep}{3pt}
-  \begin{tabular}{lrrrr}
-    \toprule
-    \textbf{Cenário} & \textbf{RPS} & \textbf{p95 (ms)} & \textbf{p99 (ms)} & \textbf{RAM (MiB)} \\
-    \midrule
-    A -- PHP-FPM & 143,7 $\pm$ 0,5 & 785,6 & 800,5 & 79,2 \\
-    B -- Clássico & 156,1 $\pm$ 1,4 & 710,0 & 782,9 & 123,9 \\
-    E -- Clássico, padrão & 175,5 $\pm$ 1,7 & 660,6 & 720,7 & 119,7 \\
-    C -- CI4 Worker & 318,1 $\pm$ 6,1 & 394,1 & 405,7 & 125,4 \\
-    D -- Octane & 351,3 $\pm$ 0,9 & 374,6 & 396,8 & 171,6 \\
+    B contra A & +8,5\%   & [+10,9; +13,5]   & $-9,0$\%  & [$-81,8$; $-59,2$] \\
+    E contra B & +12,4\%  & [+17,6; +21,0]   & $-7,1$\%  & [$-65,8$; $-35,0$] \\
+    C contra A & +120,7\% & [+168,3; +179,1] & $-49,8$\% & [$-394,3$; $-387,6$] \\
+    C contra E & +81,0\%  & [+136,8; +147,5] & $-40,7$\% & [$-284,4$; $-255,7$] \\
+    D contra C & +10,7\%  & [+28,6; +39,3]   & $-5,2$\%  & [$-23,1$; $-17,6$] \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 \begin{figure}[htb]
   \centering
-  \includegraphics[width=0.92\linewidth]{figuras/fig_rps.png}
-  \caption{Vazão média por cenário, com desvio-padrão de 3 execuções.}
+  \includegraphics[width=0.85\linewidth]{figuras/fig_rps.png}
+  \caption{Vazão média por cenário em modelo fechado, com IC95\% de 5 execuções.}
   \label{fig:rps}
 \end{figure}
 
-Todos os cenários saturaram a CPU (92,7\% a 100,6\% de um núcleo, Figura~\ref{fig:rec}) e nenhum passou de 173~MiB de RAM, de modo que o gargalo é a CPU. A latência nos quatro \textit{endpoints} foi praticamente a mesma dentro de cada cenário: a latência média de \texttt{/db} (Tabela~\ref{tab:endpoints}) ficou apenas 1~ms acima da de \texttt{/health} em C e 2~ms em D, contra 36~ms em A e 43~ms em B, como mostra a Figura~\ref{fig:lat}, e a relação $N/X$ confere ($100/143{,}7\approx696$~ms contra p50 medido de 687~ms no cenário A; $100/318{,}1\approx314$~ms contra 300~ms em C).
+\subsection{Latência sem saturação (100 requisições por segundo)}
+Em modelo fechado e saturado, o p95 de C é 49,8\% menor que o de A, mas isso reflete a fila: pela Lei de Little, $100/143{,}9\approx695$~ms contra p50 medido de 687~ms em A. A Tabela~\ref{tab:taxa} mostra a latência sem saturação. A 100 req/s todos os cenários sustentaram a taxa, sem descartes, e a CPU ficou abaixo de 60\% (A, B, E) e de 36\% (C, D). O p95 do modo Worker do CI4 é 6,6~ms contra 15,3~ms do PHP-FPM, 57\% menor (IC95\% da diferença $-8{,}85$ a $-8{,}67$~ms; $p<0{,}001$). O modo clássico praticamente não alterou a latência: B e E diferem de A em menos de 0,2~ms. O Octane teve p95 6,2~ms, 6\% abaixo de C ($p=0{,}009$).
 
 \begin{table}[htb]
-  \caption{Latência média por \textit{endpoint} (ms).}
-  \label{tab:endpoints}
+  \caption{Latência a 100 req/s (modelo aberto, 3 execuções): p95 (média e IC95\%), p99, CPU e latência média por \textit{endpoint}.}
+  \label{tab:taxa}
   \centering
   \footnotesize
   \setlength{\tabcolsep}{3pt}
-  \begin{tabular}{lrrrr}
+  \begin{tabular}{lrrrrr}
     \toprule
-    \textbf{Cenário} & \textbf{/health} & \textbf{/compute} & \textbf{/memory} & \textbf{/db} \\
+    \textbf{Cenário} & \textbf{p95 (ms)} & \textbf{p99 (ms)} & \textbf{CPU (\%)} & \textbf{/health} & \textbf{/db} \\
     \midrule
-    A & 529,0 & 536,8 & 527,8 & 565,3 \\
-    B & 482,2 & 492,1 & 484,2 & 525,4 \\
-    E & 436,8 & 439,9 & 436,5 & 456,9 \\
-    C & 241,3 & 251,1 & 241,3 & 242,2 \\
-    D & 217,5 & 228,1 & 217,2 & 219,7 \\
+    A -- PHP-FPM & 15,3 $\pm$ 0,1 & 16,5 & 55,9 & 3,2 & 14,6 \\
+    B -- Clássico & 15,4 $\pm$ 0,1 & 16,6 & 57,7 & 3,3 & 14,7 \\
+    E -- Clássico, padrão & 15,5 $\pm$ 0,0 & 16,8 & 57,9 & 3,3 & 14,8 \\
+    C -- CI4 Worker & 6,6 $\pm$ 0,1 & 7,1 & 35,5 & 2,8 & 3,3 \\
+    D -- Octane & 6,2 $\pm$ 0,0 & 6,7 & 36,1 & 2,4 & 3,3 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
+A redução de latência concentra-se no \texttt{/db}: sua latência média cai de 14,6~ms (A) para 3,3~ms (C), ao passo que \texttt{/health}, que não acessa o banco, cai de 3,2 para 2,8~ms e \texttt{/compute}, de 5,8 para 5,7~ms (Figura~\ref{fig:lat}). A CPU para atender os mesmos 100 req/s também cai de 55,9\% para 35,5\%.
+
 \begin{figure}[htb]
   \centering
-  \includegraphics[width=0.95\linewidth]{figuras/fig_latencia_p95.png}
-  \caption{Latência p95 por \textit{endpoint} e cenário.}
+  \includegraphics[width=0.95\linewidth]{figuras/fig_latencia_100rps.png}
+  \caption{Latência p95 por \textit{endpoint} a 100 req/s (barras: IC95\% de 3 execuções).}
   \label{fig:lat}
 \end{figure}
 
-\begin{figure}[htb]
-  \centering
-  \includegraphics[width=\linewidth]{figuras/fig_recursos.png}
-  \caption{CPU e RAM médias no patamar sustentado (3 execuções).}
-  \label{fig:rec}
-\end{figure}
-
+\subsection{Estado preservado e estabilidade}
 O diagnóstico de persistência (Tabela~\ref{tab:estado}) mostra que C e D preservam o estado e a conexão com o banco por \textit{worker}, ao passo que A, B e E reiniciam ambos a cada requisição. Com um único \textit{worker}, 200 requisições sequenciais a \texttt{/memory} produziram um contador crescente de 2 a 201 e um único PID de conexão em C e em D; com quatro \textit{workers} e requisições concorrentes, o C usou quatro processos, cada um com seu contador e sua conexão. No D, o diagnóstico registrou um \textit{worker} adicional, coerente com o reciclo periódico de processos do Octane (cerca de 500 requisições), que não ocorreu no CI4. No teste de 30 minutos (Figura~\ref{fig:ram}), a RAM do C ficou em 125,8~MiB nos primeiros 5 minutos e em 126,0~MiB nos últimos, e a do D em 171,3 e 171,8~MiB; a vazão ficou 2,5\% (C) e 1,3\% (D) abaixo da das execuções de 15 minutos.
 
 \begin{table}[htb]
@@ -136,23 +138,25 @@ O diagnóstico de persistência (Tabela~\ref{tab:estado}) mostra que C e D prese
 
 \begin{figure}[htb]
   \centering
-  \includegraphics[width=0.92\linewidth]{figuras/fig_ram_longo.png}
+  \includegraphics[width=0.85\linewidth]{figuras/fig_ram_longo.png}
   \caption{RAM dos contêineres C e D durante 30 minutos de patamar.}
   \label{fig:ram}
 \end{figure}
 
 \section{Discussão}
-O resultado mais forte é que manter o processo e o \textit{framework} em memória mais que dobrou a vazão do CI4 e reduziu à metade o p95 e o p99 com os mesmos recursos, o que é coerente com o princípio do modo Worker~\cite{dungalas2024} e com a direção dos resultados de Luz et al.~\cite{luz2024} e Azzahidi et al.~\cite{azzahidi2025}. Como o CI4 em Worker preserva também a conexão com o banco, o ganho soma a eliminação do \textit{bootstrap} ao reaproveitamento da conexão; o experimento não separa as duas parcelas. O cenário B mostra que trocar apenas o servidor rende pouco, e o E indica que o modo clássico depende do número de \textit{threads}, mas mesmo assim fica 45\% abaixo do C: o ganho decorre do modo Worker, não do FrankenPHP em si.
+O resultado mais forte é que manter o processo e o \textit{framework} em memória mais que dobrou a capacidade do CI4 (+120,7\%) e reduziu em 57\% o p95 sem saturação, com os mesmos recursos, o que é coerente com o princípio do modo Worker~\cite{dungalas2024} e com a direção dos resultados de Luz et al.~\cite{luz2024} e Azzahidi et al.~\cite{azzahidi2025}. O cenário B mostra que trocar apenas o servidor rende pouco em capacidade (+8,5\%) e nada em latência, e o E indica que o modo clássico depende do número de \textit{threads}, mas mesmo assim fica 45\% abaixo do C em capacidade: o ganho decorre do modo Worker, não do FrankenPHP em si.
 
-Do ponto de vista de eficiência de recursos, o C processou 2,2 vezes mais requisições que o A com a mesma CPU e apenas 46~MiB a mais de RAM, o que significa menos instâncias para a mesma carga e se relaciona à busca por infraestrutura mais eficiente (ODS 9). Além disso, o cenário A foi o único que não saturou o núcleo (92,7\%), possivelmente porque a cota é dividida entre dois contêineres (PHP-FPM e Nginx) e a capacidade ociosa de um não pode ser usada pelo outro.
+O experimento mede o efeito \emph{combinado} do modo Worker: a eliminação do \textit{bootstrap} a cada requisição e o reaproveitamento da conexão com o banco, que no CI4 em Worker também é preservada. Os dados por \textit{endpoint} sugerem que, em latência, a parcela da conexão é a maior: o \texttt{/db} perde cerca de 11~ms, enquanto o \texttt{/health} perde menos de 0,5~ms. Isso é consistente com o custo de abrir e autenticar uma conexão PostgreSQL por requisição, mas é uma inferência, pois o \texttt{/health} não é um isolador perfeito do \textit{bootstrap} e não houve perfilamento.
 
-Esperava-se que o CI4, mais leve, superasse o Octane; ocorreu o contrário, com diferença pequena (10,4\% em vazão, sem significância após a correção) e menor uso de memória (125 contra 172~MiB). O Octane é um pacote maduro, projetado para esse modelo~\cite{otwell2024}, enquanto o suporte do CI4 é recente~\cite{codeigniter2024}; não houve perfilamento, e essas explicações são hipóteses. A estabilidade da memória em 30 minutos reduz a preocupação com vazamento, mas não a elimina para períodos mais longos ou aplicações complexas.
+Do ponto de vista de eficiência de recursos, o C processou 2,2 vezes mais requisições que o A com a mesma CPU e apenas 46~MiB a mais de RAM, o que significa menos instâncias para a mesma carga e se relaciona à busca por infraestrutura mais eficiente (ODS 9). O cenário A usou menos CPU que os demais em modelo fechado (92,7\%), possivelmente porque a cota é dividida entre dois contêineres (PHP-FPM e Nginx) e a capacidade ociosa de um não pode ser usada pelo outro; isso também faz parte do efeito medido entre A e as arquiteturas do FrankenPHP.
+
+Esperava-se que o CI4, mais leve, superasse o Octane; ocorreu o contrário, com diferença pequena (+10,7\% em vazão e $-6$\% em p95 sem saturação) mas distinguível com $n=5$, e menor uso de memória (125 contra 172~MiB). O Octane é um pacote maduro, projetado para esse modelo~\cite{otwell2024}, enquanto o suporte do CI4 é recente~\cite{codeigniter2024}; essas explicações são hipóteses. A estabilidade da memória em 30 minutos reduz a preocupação com vazamento, mas não a elimina para períodos mais longos ou aplicações complexas.
 
 \subsection{Ameaças à validade}
-Como limitações: execução em um único hospedeiro com o injetor na mesma máquina; carga sintética em modelo fechado, que torna a latência função da vazão; apenas três execuções por cenário, o que limita o poder estatístico; PHP \textit{thread-safe} no FrankenPHP e não no PHP-FPM; e imagens de monitoramento sem versão fixada.
+As execuções ocorreram em um único hospedeiro, com o injetor de carga na mesma máquina, e em dois dias; as duas últimas execuções de cada cenário foram coletadas separadamente, mas concordam com as demais. As execuções de um mesmo cenário não são independentes no sentido estrito (mesmo \textit{hardware}), e o IC descreve a variação entre elas. Fatores que diferem entre os cenários e não são isolados: o PHP \textit{thread-safe} do FrankenPHP contra o não \textit{thread-safe} do PHP-FPM, a divisão da cota de CPU entre PHP-FPM e Nginx no cenário A, e a conexão persistente. A latência sem saturação foi medida em uma única taxa (100 req/s) e a carga é sintética, com \textit{endpoints} simples; as imagens de monitoramento não tiveram a versão fixada. Os resultados valem para este ambiente e não substituem testes com aplicações reais.
 
 \section{Conclusões e Trabalhos Futuros}
-O modo Worker do FrankenPHP elevou em 121,4\% a vazão do CodeIgniter 4 sobre o PHP-FPM e reduziu a latência de cauda pela metade, ao custo de cerca de 46~MiB de RAM, com memória estável em 30 minutos e preservação de estado e conexão equivalentes às do Laravel Octane. Trocar apenas o servidor, mantendo o modo clássico, não justifica a migração pelo desempenho. Para equipes com aplicações em CI4, vale avaliar o modo Worker, observando a responsabilidade de evitar vazamento de estado entre requisições.
+Neste experimento, o modo Worker do FrankenPHP elevou em 120,7\% a capacidade do CodeIgniter 4 sobre o PHP-FPM (317,6 contra 143,9~RPS; $n=5$) e reduziu em 57\% o p95 de uma carga abaixo da saturação (6,6 contra 15,3~ms), ao custo de cerca de 46~MiB de RAM, com memória estável em 30 minutos e preservação de estado e conexão equivalentes às do Laravel Octane, que ficou 10,7\% acima em vazão. O ganho é o efeito combinado da execução persistente e do reaproveitamento da conexão com o banco. Trocar apenas o servidor, mantendo o modo clássico, não se justificaria pelo desempenho. Para equipes com aplicações em CI4, os dados indicam que vale avaliar o modo Worker, observando a responsabilidade de evitar vazamento de estado entre requisições.
 
 \subsection{Trabalhos Futuros}
-Sugerem-se: carga de taxa de chegada fixa (modelo aberto) para isolar o custo de cada \textit{endpoint} e da conexão persistente; mais execuções por cenário; testes de várias horas com aplicações mais realistas, com sessões e consultas complexas; perfilamento para explicar a diferença entre C e D; e a comparação com Swoole e RoadRunner.
+Sugerem-se: variar a taxa de chegada para obter a curva de latência por carga; separar o custo do \textit{bootstrap} do da conexão com perfilamento; testes de várias horas com aplicações mais realistas, com sessões e consultas complexas; perfilamento para explicar a diferença entre C e D; e a comparação com Swoole e RoadRunner.

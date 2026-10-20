@@ -20,10 +20,12 @@ ir também como resumo estendido (duplicidade desclassifica); por isso não há 
   O `.tex` original vem com entidades HTML (`&ccedil;`), que o LaTeX não compila; por isso o artigo usa acentos normais.
 - `artigo/corpo.tex`: texto do artigo. `referencias.tex`, `declaracao-ia.tex`: referências e declaração de IA.
 - `artigo/gerar.py`: gera `cotb2027-cego.tex` (avaliação, anônimo) e `cotb2027-final.tex` (camera-ready).
-- `artigo/figuras/`: figuras (de `docs/figuras/`, geradas por `scripts/analyze.py`).
+- `artigo/figuras/`: figuras geradas por `scripts/analyze_cotb.py` (n = 5 e taxa fixa; não vêm de `docs/figuras/`).
+- **Dados do artigo** (além dos do TCC): `results/cotb/` (taxa fixa de 100 req/s, 3 execuções por cenário; repetições 4 e 5 da carga fechada) e `results/cotb/analysis/` (tabelas, IC95%, Welch/Holm, Mann–Whitney, compatibilidade dos blocos temporais). Coleta: `scripts/run-cotb.sh` (20/out/2026). O TCC entregue segue com n = 3 e carga fechada, e não foi alterado.
 
 ## Como gerar os PDFs (Overleaf)
-1. `python3 artigo/gerar.py`.
+0. (Só se os dados mudarem) `python3 scripts/analyze_cotb.py`.
+1. `python3 artigo/gerar.py`. O `overleaf-cego.zip` já contém `cotb2027-cego.tex` e `figuras/`.
 2. No Overleaf: novo projeto, enviar `cotb2027-cego.tex`, a pasta `figuras/` (e, se o Overleaf pedir, `acmart.cls` e
    `ACM-Reference-Format.bst` do evento). Compilador pdfLaTeX; arquivo principal `cotb2027-cego.tex`.
 3. Conferir **≤ 6 páginas**. Baixar o PDF e submeter no JEMS. Repetir com `cotb2027-final.tex` só após o aceite.
