@@ -4,7 +4,7 @@
  "sequencial": {
   "workers_distintos_memory": 1,
   "memory": {
-   "b27e362f": {
+   "0b4b4efc": {
     "n": 200,
     "contador_min": 2,
     "contador_max": 201,
@@ -12,7 +12,7 @@
    }
   },
   "db_pg_pids_por_worker": {
-   "b27e362f": [
+   "0b4b4efc": [
     "40"
    ]
   }
@@ -20,42 +20,42 @@
  "concorrente": {
   "workers_distintos_memory": 4,
   "memory": {
-   "b27e362f": {
-    "n": 124,
+   "3fd19af5": {
+    "n": 9,
+    "contador_min": 1,
+    "contador_max": 9,
+    "reinicios": 0
+   },
+   "6fe26b6d": {
+    "n": 10,
+    "contador_min": 1,
+    "contador_max": 10,
+    "reinicios": 0
+   },
+   "70df9577": {
+    "n": 12,
+    "contador_min": 1,
+    "contador_max": 12,
+    "reinicios": 0
+   },
+   "0b4b4efc": {
+    "n": 169,
     "contador_min": 202,
-    "contador_max": 325,
-    "reinicios": 0
-   },
-   "5e98fa82": {
-    "n": 24,
-    "contador_min": 1,
-    "contador_max": 24,
-    "reinicios": 0
-   },
-   "270064e0": {
-    "n": 19,
-    "contador_min": 1,
-    "contador_max": 19,
-    "reinicios": 0
-   },
-   "598c532b": {
-    "n": 33,
-    "contador_min": 1,
-    "contador_max": 33,
-    "reinicios": 0
+    "contador_max": 370,
+    "reinicios": 2
    }
   },
   "db_pg_pids_por_worker": {
-   "b27e362f": [
+   "0b4b4efc": [
     "40"
    ],
-   "598c532b": [
+   "70df9577": [
     "48"
    ],
-   "5e98fa82": [
+   "3fd19af5": [
     "49"
    ],
-   "270064e0": [
+   "6fe26b6d": [
     "50"
    ]
   }

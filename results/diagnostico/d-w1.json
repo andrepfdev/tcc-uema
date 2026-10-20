@@ -4,7 +4,7 @@
  "sequencial": {
   "workers_distintos_memory": 1,
   "memory": {
-   "171ec0ef": {
+   "b4427545": {
     "n": 200,
     "contador_min": 2,
     "contador_max": 201,
@@ -12,7 +12,7 @@
    }
   },
   "db_pg_pids_por_worker": {
-   "171ec0ef": [
+   "b4427545": [
     40
    ]
   }
@@ -20,25 +20,25 @@
  "concorrente": {
   "workers_distintos_memory": 2,
   "memory": {
-   "171ec0ef": {
+   "b4427545": {
     "n": 49,
     "contador_min": 202,
     "contador_max": 250,
     "reinicios": 0
    },
-   "7b7ef950": {
+   "7fd8bcfa": {
     "n": 151,
     "contador_min": 1,
     "contador_max": 151,
-    "reinicios": 1
+    "reinicios": 0
    }
   },
   "db_pg_pids_por_worker": {
-   "171ec0ef": [
+   "b4427545": [
     40
    ],
-   "7b7ef950": [
-    49
+   "7fd8bcfa": [
+    48
    ]
   }
  }
