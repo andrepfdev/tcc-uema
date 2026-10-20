@@ -20,9 +20,10 @@ NOMES = {
     "b": "B — CI4 + FrankenPHP clássico",
     "c": "C — CI4 + FrankenPHP Worker",
     "d": "D — Laravel Octane",
+    "e": "E — CI4 + FrankenPHP clássico (threads padrão)",
 }
 ENDPOINTS = ["health", "compute", "memory", "db"]
-CORES = {"a": "#8c8c8c", "b": "#4c78a8", "c": "#e07b39", "d": "#59a14f"}
+CORES = {"a": "#8c8c8c", "b": "#4c78a8", "c": "#e07b39", "d": "#59a14f", "e": "#b07aa1"}
 
 
 def load():
@@ -77,6 +78,67 @@ def recursos():
     return res
 
 
+def estatistica(data):
+    """ANOVA de um fator e testes t de Welch par a par (n=3 por cenário: poder baixo, ver ressalva no texto)."""
+    try:
+        from scipy import stats
+    except ImportError:
+        print("scipy ausente: estatística não gerada")
+        return
+    pares = [("b", "a"), ("e", "b"), ("c", "a"), ("c", "b"), ("c", "e"), ("d", "c")]
+    out = ["# Testes estatísticos (n=3 por cenário)", ""]
+    for chave, rot in (("rps", "RPS"), ("p95", "Latência p95"), ("p99", "Latência p99")):
+        grupos = [[r[chave] for r in data[s]] for s in data if len(data[s]) > 1]
+        f, p = stats.f_oneway(*grupos)
+        out += [f"## {rot}", f"ANOVA: F = {f:.1f}, p = {p:.2e}", "", "| Comparação | diferença (%) | t (Welch) | p | p ajustado (Bonferroni) |", "|---|---|---|---|---|"]
+        for a_, b_ in pares:
+            xa, xb = [r[chave] for r in data[a_]], [r[chave] for r in data[b_]]
+            t, pv = stats.ttest_ind(xa, xb, equal_var=False)
+            dif = (st.mean(xa) / st.mean(xb) - 1) * 100
+            out.append(f"| {a_.upper()} vs {b_.upper()} | {dif:+.1f} | {t:.1f} | {pv:.2e} | {min(1, pv * len(pares)):.2e} |")
+        out.append("")
+    (OUT / "estatistica.md").write_text("\n".join(out))
+
+
+def longos():
+    """Teste de 30 min (c-long, d-long): RAM e CPU em janelas de 5 min do patamar, a partir de stats-samples.csv."""
+    from datetime import datetime
+    amostras = list(csv.DictReader(open(RUNS / "stats-samples.csv")))
+    out = ["| Cenário | RPS | p95 (ms) | p99 (ms) | RAM 1ª janela (MiB) | RAM última janela (MiB) | RAM pico (MiB) |", "|---|---|---|---|---|---|---|"]
+    series = {}
+    for s in ("c", "d"):
+        d = RUNS / f"{s}-long"
+        if not (d / "last-run.json").exists():
+            continue
+        m = json.load(open(d / "last-run.json"))["metrics"]
+        fim = datetime.fromisoformat((d / "finished_at").read_text().strip()).timestamp()
+        ini = fim - 35 * 60 + 4 * 60   # início do patamar (2 min + 2 min de rampa)
+        fimp = fim - 60                # fim do patamar
+        pts = []
+        for r in amostras:
+            ts = int(r["ts"])
+            if r["name"] != f"tcc-uema-app-{s}-1" or not (ini <= ts <= fimp):
+                continue
+            mem = r["mem_usage"].split("/")[0].strip()
+            pts.append(((ts - ini) / 60, float(re.sub("[^0-9.]", "", mem)) * (1024 if "GiB" in mem else 1),
+                        float(r["cpu_pct"].rstrip("%"))))
+        series[s] = pts
+        if not pts:
+            continue
+        prim = [p[1] for p in pts if p[0] <= 5]
+        ult = [p[1] for p in pts if p[0] >= 25]
+        out.append(f"| {NOMES[s]} | {m['http_reqs']['rate']:.1f} | {m['http_req_duration']['p(95)']:.1f} | "
+                   f"{m['http_req_duration']['p(99)']:.1f} | {st.mean(prim):.1f} | {st.mean(ult):.1f} | {max(p[1] for p in pts):.1f} |")
+    (OUT / "tabela_longos.md").write_text("\n".join(out) + "\n")
+    with open(OUT / "longos_ram.csv", "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["cenario", "minuto_patamar", "ram_mib", "cpu_pct"])
+        for s, pts in series.items():
+            for t, ram, cpu in pts:
+                w.writerow([s, f"{t:.2f}", ram, cpu])
+    globals()["_SERIES"] = series
+
+
 def ms(vals):
     vals = [v for v in vals if v == v]
     if not vals:
@@ -126,11 +188,14 @@ def main():
 
     # Ganhos relativos de RPS
     ganhos = []
-    for a_, b_ in [("b", "a"), ("c", "a"), ("c", "b"), ("c", "d"), ("d", "a")]:
+    for a_, b_ in [("b", "a"), ("e", "b"), ("c", "a"), ("c", "b"), ("c", "e"), ("d", "c"), ("d", "a")]:
         if a_ in agg and b_ in agg:
             g = (agg[a_]["rps"][0] / agg[b_]["rps"][0] - 1) * 100
             ganhos.append(f"{a_.upper()} vs {b_.upper()}: {g:+.1f}% RPS")
     (OUT / "ganhos.txt").write_text("\n".join(ganhos) + "\n")
+
+    estatistica(data)
+    longos()
 
     # Figuras
     try:
@@ -177,6 +242,17 @@ def main():
             ax.set_xlabel("Cenário")
         fig.tight_layout()
         fig.savefig(OUT / "fig_recursos.png", dpi=200)
+        plt.close(fig)
+    if globals().get("_SERIES"):
+        fig, ax = plt.subplots(figsize=(7.5, 4))
+        for s, pts in _SERIES.items():
+            ax.plot([p[0] for p in pts], [p[1] for p in pts], color=CORES[s], label=NOMES[s].split(" — ")[0], lw=1.2)
+        ax.set_xlabel("Tempo no patamar (min)")
+        ax.set_ylabel("RAM do contêiner (MiB)")
+        ax.set_ylim(bottom=0)
+        ax.legend(title="Cenário")
+        fig.tight_layout()
+        fig.savefig(OUT / "fig_ram_longo.png", dpi=200)
         plt.close(fig)
     print("OK:", OUT)
 

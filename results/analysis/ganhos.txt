@@ -1,0 +1,7 @@
+B vs A: +8.7% RPS
+E vs B: +12.4% RPS
+C vs A: +121.4% RPS
+C vs B: +103.7% RPS
+C vs E: +81.3% RPS
+D vs C: +10.4% RPS
+D vs A: +144.5% RPS
