@@ -96,7 +96,7 @@ Persistent in-memory execution removes the per-request framework bootstrap of tr
 \keywords{CodeIgniter 4, FrankenPHP, Worker mode, performance benchmarking, PHP}
 """
 
-REPO_CEGO = r"\newcommand{\repoinfo}{Os \textit{scripts} de coleta e análise e os dados brutos serão disponibilizados publicamente na versão final do trabalho.}"
+REPO_CEGO = r"\newcommand{\repoinfo}{Os \textit{scripts} de coleta e análise e os dados brutos estão disponíveis em \url{https://anonymous.4open.science/r/cotb-benchmark-anon-F666/}.}"
 REPO_FINAL = r"\newcommand{\repoinfo}{Os \textit{scripts} de coleta e análise e os dados brutos estão disponíveis em \url{https://github.com/andrepfdev/tcc-uema}.}"
 
 AGR_CEGO = "\\section*{Agradecimentos}\nAgradecimentos omitidos para fins de avaliação cega.\n"

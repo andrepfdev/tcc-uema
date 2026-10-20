@@ -125,10 +125,11 @@ def holm(ps):
 
 
 def razao_ic(xa, xb):
-    """Razão de médias a/b e IC95% pelo método delta na escala log."""
+    """Razão de médias a/b e IC95% pelo método delta na escala log (t com gl de Welch–Satterthwaite)."""
     ma, mb = st.mean(xa), st.mean(xb)
-    var = st.variance(xa) / (len(xa) * ma ** 2) + st.variance(xb) / (len(xb) * mb ** 2)
-    gl = len(xa) + len(xb) - 2
+    va, vb = st.variance(xa) / (len(xa) * ma ** 2), st.variance(xb) / (len(xb) * mb ** 2)
+    var = va + vb
+    gl = var ** 2 / (va ** 2 / (len(xa) - 1) + vb ** 2 / (len(xb) - 1))
     h = stats.t.ppf(0.975, gl) * math.sqrt(var)
     r = ma / mb
     return r, r * math.exp(-h), r * math.exp(h)
@@ -152,7 +153,7 @@ def tabela_capacidade(cap):
         dp = st.stdev([r["rps"] for r in cap[s]])
         err = max(r["err"] for r in cap[s]) * 100
         L.append(f"| {NOMES[s]} | {len(cap[s])} | {c['rps'][0]:.1f} ± {c['rps'][1]:.1f} | {c['p95'][0]:.1f} ± {c['p95'][1]:.1f} | "
-                 f"{c['p99'][0]:.1f} ± {c['p99'][1]:.1f} | {c['cpu'][0]:.1f} | {c['ram'][0]:.1f} | {err:.2f} |")
+                 f"{c['p99'][0]:.1f} ± {c['p99'][1]:.1f} | {c['cpu'][0]:.1f} ± {c['cpu'][1]:.1f} | {c['ram'][0]:.1f} ± {c['ram'][1]:.1f} | {err:.2f} |")
         csvw.append([s, len(cap[s]), c["rps"][0], c["rps"][1], dp, c["p95"][0], c["p95"][1], c["p99"][0], c["p99"][1], c["cpu"][0], c["ram"][0]])
     (OUT / "capacidade.md").write_text("\n".join(L) + "\n")
     csv.writer(open(OUT / "capacidade.csv", "w", newline="")).writerows(csvw)
@@ -205,17 +206,17 @@ def tabela_taxa_fixa(rate):
     for s in CEN:
         c = {k: ic95([r[k] for r in rate[s]]) for k in ("rps", "p50", "p95", "p99", "cpu", "ram")}
         L.append(f"| {NOMES[s]} | {c['rps'][0]:.1f} | {sum(r['dropped'] for r in rate[s]):.0f} | {max(r['err'] for r in rate[s]) * 100:.2f} | "
-                 f"{c['p50'][0]:.1f} ± {c['p50'][1]:.1f} | {c['p95'][0]:.1f} ± {c['p95'][1]:.1f} | {c['p99'][0]:.1f} ± {c['p99'][1]:.1f} | "
-                 f"{c['cpu'][0]:.1f} | {c['ram'][0]:.1f} |")
+                 f"{c['p50'][0]:.2f} ± {c['p50'][1]:.2f} | {c['p95'][0]:.2f} ± {c['p95'][1]:.2f} | {c['p99'][0]:.2f} ± {c['p99'][1]:.2f} | "
+                 f"{c['cpu'][0]:.1f} ± {c['cpu'][1]:.1f} | {c['ram'][0]:.1f} ± {c['ram'][1]:.1f} |")
     L += ["", "## Por endpoint (média ± IC95%): latência média / p95 (ms)", "",
           "| Cenário | " + " | ".join(ENDPOINTS) + " |", "|---|" + "---|" * len(ENDPOINTS)]
     for s in CEN:
         cel = []
         for e in ENDPOINTS:
             a, p = ic95([r[f"{e}_avg"] for r in rate[s]]), ic95([r[f"{e}_p95"] for r in rate[s]])
-            cel.append(f"{a[0]:.1f} ± {a[1]:.1f} / {p[0]:.1f} ± {p[1]:.1f}")
+            cel.append(f"{a[0]:.2f} ± {a[1]:.2f} / {p[0]:.2f} ± {p[1]:.2f}")
         L.append(f"| {NOMES[s]} | " + " | ".join(cel) + " |")
-    L += ["", "## Comparações do p95 a 100 req/s (Welch, n = 3, Holm entre os 5 pares)", "",
+    L += ["", "## Comparações do p95 a 100 req/s (Welch, n = 3, Holm entre os 6 pares)", "",
           "| Comparação | média a | média b | variação (%) | IC95% da diferença (ms) | p | p Holm |", "|---|---|---|---|---|---|---|"]
     linhas = []
     for a_, b_ in PARES:
