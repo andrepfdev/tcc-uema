@@ -1,0 +1,8 @@
+tcc-uema-app-e-1,0.00%,115.2MiB / 512MiB
+tcc-uema-grafana-1,1.42%,437.9MiB / 14.5GiB
+tcc-uema-postgres-1,0.00%,41.37MiB / 256MiB
+tcc-uema-prometheus-1,0.50%,288MiB / 14.5GiB
+tcc-uema-cadvisor-1,4.03%,167.3MiB / 14.5GiB
+sail-phpmyadmin,0.01%,7.461MiB / 14.5GiB
+lms-instituto-realize-laravel.test-1,0.07%,88.18MiB / 14.5GiB
+lms-instituto-realize-mariadb-1,2.31%,23.64MiB / 14.5GiB
