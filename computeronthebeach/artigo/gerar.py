@@ -96,8 +96,10 @@ Persistent in-memory execution removes the per-request framework bootstrap of tr
 \keywords{CodeIgniter 4, FrankenPHP, Worker mode, performance benchmarking, PHP}
 """
 
-REPO_CEGO = r"\newcommand{\repoinfo}{Os \textit{scripts} de coleta e análise e os dados brutos estão disponíveis em \url{https://anonymous.4open.science/r/cotb-benchmark-anon-F666/}.}"
-REPO_FINAL = r"\newcommand{\repoinfo}{Os \textit{scripts} de coleta e análise e os dados brutos estão disponíveis em \url{https://github.com/andrepfdev/tcc-uema}.}"
+REF_REPO = {
+    True: (r"\bibitem{azzahidi2025}", "\\bibitem{cotb_benchmark_2026}\nAnonymous. 2026. \\textit{cotb-benchmark-anon-F666: código-fonte, \\textit{scripts} e dados brutos do experimento} (README.md). Anonymous GitHub. \\url{https://anonymous.4open.science/r/cotb-benchmark-anon-F666/}. Acesso em: 21 out. 2026.\n\n"),
+    False: (r"\bibitem{grafana2024}", "\\bibitem{cotb_benchmark_2026}\nA. P. Ferreira. 2026. \\textit{Código-fonte, \\textit{scripts} e dados brutos do experimento}. GitHub. \\url{https://github.com/andrepfdev/tcc-uema}. Acesso em: 21 out. 2026.\n\n"),
+}
 
 AGR_CEGO = "\\section*{Agradecimentos}\nAgradecimentos omitidos para fins de avaliação cega.\n"
 AGR_FINAL = "\\section*{Agradecimentos}\n[AGRADECIMENTOS: ex.: ao orientador, à UEMA, a agências de fomento, se houver.]\n"
@@ -105,11 +107,11 @@ AGR_FINAL = "\\section*{Agradecimentos}\n[AGRADECIMENTOS: ex.: ao orientador, à
 
 def montar(anonima):
     partes = [CLASSE.replace("{anon}", ", anonymous" if anonima else ""), PREAMBULO,
-              REPO_CEGO if anonima else REPO_FINAL, "\\begin{document}", TITULO]
+              "\\begin{document}", TITULO]
     if not anonima:
         partes.append(AUTOR)
     partes += [ABSTRACT, "\\maketitle", "\\selectlanguage{portuguese}", corpo,
-               AGR_CEGO if anonima else AGR_FINAL, decl_ia, refs, "\\end{document}\n"]
+               AGR_CEGO if anonima else AGR_FINAL, decl_ia, refs.replace(REF_REPO[anonima][0], REF_REPO[anonima][1] + REF_REPO[anonima][0], 1), "\\end{document}\n"]
     return "\n".join(partes)
 
 
