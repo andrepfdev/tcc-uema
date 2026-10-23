@@ -86,7 +86,7 @@ body {
 
 /* ---------- Corpo do texto ---------- */
 .corpo p {
-  text-indent: 2cm;
+  text-indent: 1.25cm; /* Diretrizes UEMA */
   margin: 0 0 0 0;
   text-align: justify;
   orphans: 3;
@@ -121,11 +121,13 @@ body {
 .quadro-titulo {
   text-align: left;
   text-indent: 0;
-  font-size: 10pt;
-  font-weight: bold;
+  font-size: 12pt; /* legenda 12 pt, espaço simples, sem negrito (Diretrizes UEMA) */
+  font-weight: normal;
+  line-height: 1;
   margin: 1.5em 0 0.3em 0 !important;
 }
 .fonte {
+  line-height: 1;
   text-align: left;
   text-indent: 0;
   font-size: 10pt;

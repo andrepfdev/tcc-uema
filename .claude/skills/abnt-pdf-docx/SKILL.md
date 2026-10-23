@@ -5,6 +5,8 @@ description: Gera PDF e DOCX de trabalhos acadêmicos formatados em ABNT (capa, 
 
 # Formatação ABNT — PDF e DOCX a partir de Markdown
 
+> Para a **monografia/TCC da UEMA** use a skill `tcc-uema-formatacao` (regras oficiais da UEMA, auditor de .docx e exportação para o Overleaf). Esta skill é a genérica; ela já usa recuo 1,25 cm, legenda 12 pt e fonte 10 pt conforme as Diretrizes da UEMA.
+
 Esta skill documenta e empacota o pipeline usado para transformar relatórios acadêmicos
 escritos em Markdown em PDFs e DOCXs formatados em ABNT (capa, folha de rosto, sumário,
 quadros numerados com fonte, referências, paginação correta) — sem precisar de pandoc,

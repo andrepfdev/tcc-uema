@@ -19,15 +19,7 @@ const FONT = "Times New Roman";
 const S12 = 24, S10 = 20;
 
 // ---------------- dados do trabalho ----------------
-const T = {
-  inst: ["UNIVERSIDADE ESTADUAL DO MARANHÃO", "CENTRO DE CIÊNCIAS TECNOLÓGICAS",
-    "NÚCLEO DE TECNOLOGIAS PARA EDUCAÇÃO", "CURSO SUPERIOR DE TECNOLOGIA EM ANÁLISE E DESENVOLVIMENTO DE SISTEMAS"],
-  autor: "ANDRÉ PEREIRA FERREIRA",
-  titulo: "ANÁLISE COMPARATIVA DE DESEMPENHO EM AMBIENTES DE PERSISTÊNCIA EM MEMÓRIA",
-  subtitulo: "o impacto da arquitetura Worker do FrankenPHP no framework CodeIgniter 4 frente ao ecossistema Laravel Octane",
-  cidade: "Grajaú - MA", ano: "2026",
-  orientador: "Me. Paulo Ericson Valentim Silva",
-};
+const T = JSON.parse(fs.readFileSync(path.join(__dirname, "frontmatter.json"), "utf8")); // dados compartilhados com build-latex.py
 
 // ---------------- helpers de texto ----------------
 function runs(text, o = {}) {
@@ -54,6 +46,19 @@ const para = (text, o = {}) => new Paragraph({
 });
 const blank = (n = 1) => Array.from({ length: n }, () => new Paragraph({ children: [new TextRun({ text: "", font: FONT, size: S12 })] }));
 const center = (text, o = {}) => para(text, { align: AlignmentType.CENTER, single: true, ...o });
+// Cidade e ano ancorados no rodapé da área útil (margem inferior de 2 cm), independentemente do conteúdo acima.
+const localAno = () => new Paragraph({
+  alignment: AlignmentType.CENTER, spacing: { line: 240, lineRule: "auto" },
+  frame: { type: "alignment", alignment: { x: D.HorizontalPositionAlign.CENTER, y: D.VerticalPositionAlign.BOTTOM },
+    anchor: { horizontal: D.FrameAnchorType.MARGIN, vertical: D.FrameAnchorType.MARGIN }, width: cm(16), height: 600 },
+  children: [new TextRun({ text: T.cidade, font: FONT, size: S12 }), new TextRun({ text: T.ano, font: FONT, size: S12, break: 1 })],
+});
+// Título em negrito + ": " + subtítulo em caixa baixa, sem negrito, no MESMO parágrafo (Modelo UEMA).
+const tituloCompleto = () => new Paragraph({
+  alignment: AlignmentType.CENTER, spacing: { line: 240, lineRule: "auto" },
+  children: [new TextRun({ text: T.titulo + ": ", font: FONT, size: S12, bold: true }),
+    new TextRun({ text: T.subtitulo + ".", font: FONT, size: S12 })],
+});
 
 // ---------------- parser Markdown ----------------
 function stripComments(s) { return s.replace(/<!--[\s\S]*?-->/g, ""); }
@@ -70,7 +75,8 @@ function mdToBlocks(md, ctx) {
   const blocks = [];
   let i = 0;
   let pendingFont = null;
-  const cap = (kind, text) => ctx.lists[kind].push(text);
+  // Diretrizes UEMA: quadros são ilustrações (lista única com figuras); tabelas (IBGE) têm lista própria
+  const cap = (kind, text) => ctx.lists[kind === "Tabela" ? "Tabela" : "Ilustração"].push(text);
   const splitFonte = (t) => {
     const k = t.search(/\s(Fonte|Nota):/);
     return k < 0 ? [t, null] : [t.slice(0, k).trim(), t.slice(k).trim()];
@@ -83,7 +89,22 @@ function mdToBlocks(md, ctx) {
       const buf = []; i++;
       while (i < lines.length && !lines[i].startsWith("```")) buf.push(lines[i++]);
       i++;
-      for (const c of buf) blocks.push(new Paragraph({ children: [new TextRun({ text: c || " ", font: "Courier New", size: 16 })], spacing: { line: 240 }, alignment: AlignmentType.LEFT }));
+      // quebra linhas longas (≈ 90 colunas em Courier 8 pt) para não ultrapassar a margem direita de 2 cm
+      const MAXC = 88;
+      const wrapped = [];
+      for (const c of buf) {
+        if (c.length <= MAXC) { wrapped.push(c); continue; }
+        const lead = (c.match(/^\s*/)[0]).length;
+        let rest = c; let first = true;
+        while (rest.length > (first ? MAXC : MAXC - lead - 4)) {
+          const avail = first ? MAXC : MAXC - lead - 4;
+          let cut = rest.lastIndexOf(" ", avail); if (cut <= (first ? lead + 4 : 8)) cut = avail;
+          wrapped.push((first ? "" : " ".repeat(lead + 4)) + rest.slice(0, cut).trimEnd());
+          rest = rest.slice(cut).trimStart(); first = false;
+        }
+        wrapped.push(" ".repeat(lead + 4) + rest);
+      }
+      for (const c of wrapped) blocks.push(new Paragraph({ children: [new TextRun({ text: c || " ", font: "Courier New", size: 16 })], spacing: { line: 240 }, alignment: AlignmentType.LEFT, indent: { firstLine: 0 } }));
       blocks.push(...blank(1));
       continue;
     }
@@ -161,6 +182,11 @@ function mdToBlocks(md, ctx) {
       blocks.push(para("–  " + ln.replace(/^-\s+/, "").trim(), { indent: { left: cm(1.88), hanging: cm(0.63) } }));
       i++; continue;
     }
+    // rótulo de bloco de código/arquivo (linha só em negrito): à esquerda, sem recuo, junto ao bloco
+    if (/^\*\*[^*]+\*\*\s*$/.test(ln)) {
+      blocks.push(para(ln.trim(), { align: AlignmentType.LEFT, single: true, after: 120, keepNext: true }));
+      i++; continue;
+    }
     // parágrafo (junta linhas contínuas)
     const buf = [ln.trim()]; i++;
     while (i < lines.length && lines[i].trim() && !/^(#{2,4}\s|!\[|\||```|- |[a-z]\)\s|\*\*(Tabela|Quadro))/.test(lines[i])) buf.push(lines[i++].trim());
@@ -200,52 +226,52 @@ function pre(ctx, pages) {
   capa.push(...blank(7));
   capa.push(center(T.autor, { run: { bold: true } }));
   capa.push(...blank(6));
-  capa.push(center(T.titulo + ":", { run: { bold: true } }));
-  capa.push(center(T.subtitulo + ".", { before: 120 }));
-  capa.push(...blank(9));
-  capa.push(center(T.cidade));
-  capa.push(center(T.ano));
+  capa.push(tituloCompleto());
+  capa.push(localAno());
+  capa.push(...blank(1)); // parágrafo normal após o quadro ancorado (senão o LibreOffice o descarta no fim da seção)
 
   // folha de rosto
   const rosto = [];
   rosto.push(center(T.autor, { run: { bold: true } }));
   rosto.push(...blank(8));
-  rosto.push(center(T.titulo + ":", { run: { bold: true } }));
-  rosto.push(center(T.subtitulo + ".", { before: 120 }));
+  rosto.push(tituloCompleto());
   rosto.push(...blank(4));
-  const nat = ["Trabalho de Conclusão de Curso apresentado ao Curso Superior de Tecnologia em Análise e Desenvolvimento de Sistemas da Universidade Estadual do Maranhão para obtenção do título de Tecnólogo.", "Orientador: " + T.orientador];
+  const nat = [T.natureza, "Orientador: Prof. " + T.orientador + "."];
   nat.forEach((t) => rosto.push(para(t, { single: true, indent: { left: cm(8) }, after: 120 })));
-  rosto.push(...blank(8));
-  rosto.push(center(T.cidade)); rosto.push(center(T.ano));
+  rosto.push(localAno()); rosto.push(...blank(1));
+  // verso da folha de rosto: página em branco (a ficha catalográfica é inserida pela biblioteca antes da defesa)
+  const ficha = [...blank(1)];
 
   // aprovação
   const aprov = [];
   aprov.push(center(T.autor, { run: { bold: true } }));
   aprov.push(...blank(2));
-  aprov.push(center(T.titulo + ":", { run: { bold: true } }));
-  aprov.push(center(T.subtitulo + ".", { before: 120 }));
+  aprov.push(tituloCompleto());
   aprov.push(...blank(1));
-  aprov.push(para("Monografia apresentada ao Curso Superior de Tecnologia em Análise e Desenvolvimento de Sistemas da Universidade Estadual do Maranhão para obtenção do título de Tecnólogo.", { single: true, indent: { left: cm(8) }, after: 240 }));
+  aprov.push(para(T.natureza, { single: true, indent: { left: cm(8) }, after: 240 }));
   aprov.push(para("Aprovado em: ____ / ____ / ________.", { align: AlignmentType.LEFT, single: true, after: 360 }));
   aprov.push(center("BANCA EXAMINADORA", { run: { bold: true }, after: 480 }));
-  const memb = [["Prof. " + T.orientador + " (Orientador)", "Universidade Estadual do Maranhão"],
-    ["[Nome e titulação do(a) examinador(a) 1]", "[Instituição]"], ["[Nome e titulação do(a) examinador(a) 2]", "[Instituição]"]];
+  const memb = [["Prof. " + T.orientador + " (Orientador)", "Universidade Estadual do Maranhão"], ...T.examinadores];
   memb.forEach(([a, b]) => { aprov.push(center("________________________________________", { before: 360 })); aprov.push(center(a)); aprov.push(center(b)); });
 
-  const ded = [...blank(18), para("Ao Senhor meu Deus; à minha esposa, Jéssica; e aos meus familiares, que depositam em mim uma confiança maior do que julgo merecer.", { single: true, indent: { left: cm(8) } })];
-  const agr = [center("AGRADECIMENTOS", { run: { bold: true }, after: 360 }), para("[Texto de agradecimentos a ser redigido pelo autor.]", { indent: { firstLine: cm(1.25) } })];
+  // dedicatória: bloco de 8 cm no canto inferior direito da área útil (ancorado, não depende de linhas em branco)
+  const ded = [new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { line: 240, lineRule: "auto" },
+    frame: { type: "alignment", alignment: { x: D.HorizontalPositionAlign.RIGHT, y: D.VerticalPositionAlign.BOTTOM },
+      anchor: { horizontal: D.FrameAnchorType.MARGIN, vertical: D.FrameAnchorType.MARGIN }, width: cm(8), height: 600 },
+    children: runs(T.dedicatoria) }), ...blank(1)];
+  const agr = [center("AGRADECIMENTOS", { run: { bold: true }, after: 360 }), para(T.agradecimentos, { indent: { firstLine: cm(1.25) } })];
 
-  const resumoTxt = "Este trabalho analisa o impacto da execução persistente em memória no desempenho do framework CodeIgniter 4 (CI4). Compararam-se o PHP-FPM, o FrankenPHP em modo clássico e o FrankenPHP em modo Worker, com o Laravel Octane como referência de mercado, em contêineres Docker de mesma base (Debian 13) e com 1,0 CPU e 512 MB cada, sob carga gerada pelo k6 (100 usuários virtuais, 15 minutos) e monitoramento por Prometheus e Grafana. Em três execuções por cenário, a vazão média foi de 143 requisições por segundo (PHP-FPM), 156 (FrankenPHP clássico), 304 (CI4 em modo Worker) e 337 (Laravel Octane), medidas no patamar de 10 minutos e sem erros. O modo Worker mais que dobrou a vazão do CI4 (+112%) e reduziu à metade as latências p95 e p99, ao custo de 46 MiB adicionais de memória, enquanto o modo clássico trouxe ganho modesto (+9%). Verificou-se que o CI4 em modo Worker preserva o estado da aplicação e a conexão com o banco, como o Octane, e que a memória permaneceu estável em testes de 30 minutos. Conclui-se que o modo Worker compensa em vazão e latência para o CI4, aproximando-o do Laravel Octane.";
-  const absTxt = "This work analyzes the impact of persistent in-memory execution on the performance of the CodeIgniter 4 (CI4) framework. PHP-FPM, FrankenPHP in classic mode and FrankenPHP in Worker mode were compared, with Laravel Octane as a market reference, in Docker containers sharing the same base image (Debian 13) and limited to 1.0 CPU and 512 MB each, under load generated by k6 (100 virtual users, 15 minutes) and monitored with Prometheus and Grafana. Over three runs per scenario, mean throughput at the 10-minute plateau was 143 requests per second (PHP-FPM), 156 (classic FrankenPHP), 304 (CI4 in Worker mode) and 337 (Laravel Octane), with no errors. Worker mode more than doubled CI4 throughput (+112%) and halved p95 and p99 latency, at the cost of 46 MiB of additional memory, whereas classic mode brought a modest gain (+9%). CI4 in Worker mode was found to preserve application state and the database connection, like Octane, and memory remained stable in 30-minute tests. It is concluded that Worker mode pays off in throughput and latency for CI4, bringing it close to Laravel Octane.";
-  const resumo = [center("RESUMO", { run: { bold: true }, after: 360 }), para(resumoTxt, { single: true, indent: { firstLine: cm(1.25) } }),
-    para("**Palavras-chave:** CodeIgniter 4; FrankenPHP; desempenho; benchmarking; PHP.", { single: true, before: 240, align: AlignmentType.LEFT })];
-  const abs = [center("ABSTRACT", { run: { bold: true }, after: 360 }), para(absTxt, { single: true, indent: { firstLine: cm(1.25) } }),
-    para("**Keywords:** CodeIgniter 4; FrankenPHP; performance; benchmarking; PHP.", { single: true, before: 240, align: AlignmentType.LEFT })];
+  const resumoTxt = T.resumo;
+  const absTxt = T.abstract;
+  const resumo = [center("RESUMO", { run: { bold: true }, after: 360 }), para(resumoTxt, { indent: { firstLine: cm(1.25) } }),
+    para("**Palavras-chave:** " + T.palavrasChave, { single: true, before: 240, align: AlignmentType.LEFT })];
+  const abs = [center("ABSTRACT", { run: { bold: true }, after: 360 }), para(absTxt, { indent: { firstLine: cm(1.25) } }),
+    para("**Keywords:** " + T.keywords, { single: true, before: 240, align: AlignmentType.LEFT })];
 
   const tabs = [{ type: TabStopType.RIGHT, position: cm(16), leader: LeaderType.DOT }];
   const entry = (text, page, indentCm = 0, bold = false) => new Paragraph({
     children: [new TextRun({ text: text, font: FONT, size: S12, bold }), new TextRun({ text: "\t" + page, font: FONT, size: S12 })],
-    tabStops: tabs, indent: { left: cm(indentCm), right: cm(0.8) , hanging: 0 }, spacing: { line: 276, after: 80 }, alignment: AlignmentType.LEFT,
+    tabStops: tabs, indent: { left: cm(indentCm), right: cm(0.8) , hanging: 0 }, spacing: { line: 240, after: 60 }, alignment: AlignmentType.LEFT,
   });
   const lista = (titulo, kind) => {
     const arr = ctx.lists[kind]; if (!arr.length) return [];
@@ -253,20 +279,19 @@ function pre(ctx, pages) {
       ...arr.map((t) => entry(t, pg("L:" + t)))];
   };
   const abrev = [new Paragraph({ children: [new TextRun({ text: "LISTA DE ABREVIATURAS E SIGLAS", font: FONT, size: S12, bold: true })], alignment: AlignmentType.CENTER, pageBreakBefore: true, spacing: { after: 360 } }),
-    ...[["ANOVA", "Analysis of Variance (análise de variância)"], ["API", "Application Programming Interface"], ["CI4", "CodeIgniter 4"], ["CPU", "Central Processing Unit (unidade central de processamento)"], ["HTTP", "HyperText Transfer Protocol"],
-      ["NTS", "Non-Thread-Safe"], ["PHP-FPM", "PHP FastCGI Process Manager"], ["RAM", "Random Access Memory (memória de acesso aleatório)"], ["REST", "Representational State Transfer"], ["RPS", "Requisições por segundo (requests per second)"], ["VU", "Virtual User (usuário virtual)"], ["ZTS", "Zend Thread Safety"]]
+    ...T.siglas
       .map(([a, b]) => new Paragraph({ children: [new TextRun({ text: a, font: FONT, size: S12, bold: true }), new TextRun({ text: "\t" + b, font: FONT, size: S12 })], tabStops: [{ type: TabStopType.LEFT, position: cm(3) }], indent: { left: cm(3), hanging: cm(3) }, spacing: { line: 276, after: 80 } }))];
 
   const sumario = [new Paragraph({ children: [new TextRun({ text: "SUMÁRIO", font: FONT, size: S12, bold: true })], alignment: AlignmentType.CENTER, pageBreakBefore: true, spacing: { after: 360 } }),
     ...ctx.headings.filter((h) => h.level <= 2).map((h) => entry(h.text, pg("H:" + h.text), h.level === 1 ? 0 : 0.6, h.level === 1))];
 
   return { capa, front: [...rosto, ...aprov.map((p, k) => k === 0 ? new Paragraph({ children: p.options?.children || [], pageBreakBefore: true }) : p)],
-    rest: { rosto, aprov, ded, agr, resumo, abs, lista, abrev, sumario } };
+    rest: { rosto, ficha, aprov, ded, agr, resumo, abs, lista, abrev, sumario } };
 }
 
 // ---------------- montagem ----------------
 function build(pages) {
-  const ctx = { headings: [], lists: { Figura: [], Quadro: [], Tabela: [] } };
+  const ctx = { headings: [], lists: { Ilustração: [], Tabela: [] } };
   // corpo
   const bodyMd = [readMd("01-introducao.md"), readMd("03-fundamentacao-teorica.md"), readMd("02-metodologia-revisada.md"),
     readMd("04-resultados-e-discussao.md"), readMd("05-consideracoes-finais.md"), readMd("06-referencias.md"), readMd("07-apendices.md")];
@@ -303,7 +328,7 @@ function build(pages) {
 
 async function writeDoc(pages, file) {
   const ctxHolder = {};
-  const ctx = { headings: [], lists: { Figura: [], Quadro: [], Tabela: [] } };
+  const ctx = { headings: [], lists: { Ilustração: [], Tabela: [] } };
   // build() devolve Document; precisamos também do ctx -> reimplementa chamando função interna
   const doc = (() => { const d = build(pages); return d; })();
   return doc;
@@ -314,7 +339,7 @@ async function writeDoc(pages, file) {
   let lastCtx;
   const origBuild = build;
   const mk = (pages) => {
-    const ctx = { headings: [], lists: { Figura: [], Quadro: [], Tabela: [] } };
+    const ctx = { headings: [], lists: { Ilustração: [], Tabela: [] } };
     const bodyFiles = ["01-introducao.md", "03-fundamentacao-teorica.md", "02-metodologia-revisada.md", "04-resultados-e-discussao.md", "05-consideracoes-finais.md", "06-referencias.md", "07-apendices.md"];
     const blocks = [];
     bodyFiles.forEach((f, idx) => {
@@ -327,8 +352,8 @@ async function writeDoc(pages, file) {
     });
     const pre_ = pre(ctx, pages); const r = pre_.rest;
     const pageProps = { size: { width: cm(21), height: cm(29.7) }, margin: { top: cm(3), right: cm(2), bottom: cm(2), left: cm(3) } };
-    const sec2 = [...r.rosto, ...[r.aprov, r.ded, r.agr, r.resumo, r.abs].flatMap((arr) => [new Paragraph({ children: [], pageBreakBefore: true }), ...arr]),
-      ...r.lista("LISTA DE FIGURAS", "Figura"), ...r.lista("LISTA DE QUADROS", "Quadro"), ...r.lista("LISTA DE TABELAS", "Tabela"), ...r.abrev, ...r.sumario];
+    const sec2 = [...r.rosto, ...[r.ficha, r.aprov, r.ded, r.agr, r.resumo, r.abs].flatMap((arr) => [new Paragraph({ children: [], pageBreakBefore: true }), ...arr]),
+      ...r.lista("LISTA DE ILUSTRAÇÕES", "Ilustração"), ...r.lista("LISTA DE TABELAS", "Tabela"), ...r.abrev, ...r.sumario];
     const header = new Header({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ children: [PageNumber.CURRENT], font: FONT, size: S10 })] })] });
     const doc = new Document({
       creator: "André Pereira Ferreira", title: T.titulo,
@@ -366,7 +391,7 @@ async function writeDoc(pages, file) {
   };
   const disp = (p) => (p ? p - 1 : "?");
   ctx.headings.filter((h) => h.level <= 2).forEach((h) => { pages["H:" + h.text] = disp(findPage(h.text, bodyStart)); });
-  ["Figura", "Quadro", "Tabela"].forEach((k) => ctx.lists[k].forEach((t) => { pages["L:" + t] = disp(findPage(t, bodyStart)); }));
+  ["Ilustração", "Tabela"].forEach((k) => ctx.lists[k].forEach((t) => { pages["L:" + t] = disp(findPage(t, bodyStart)); }));
   ({ doc } = mk(pages));
   await save(doc, docxPath); conv(docxPath);
   // pass 3: confere que a paginação não mudou (sumário ocupa o mesmo espaço)

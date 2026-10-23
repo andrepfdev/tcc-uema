@@ -1,6 +1,6 @@
 ## APÊNDICES
 
-### APÊNDICE A — Orquestração dos contêineres (docker-compose.yml)
+### APÊNDICE A – Orquestração dos contêineres (docker-compose.yml)
 
 **docker-compose.yml**
 
@@ -312,7 +312,7 @@ volumes:
   postgres-data:
 ```
 
-### APÊNDICE B — Imagens e configuração dos servidores
+### APÊNDICE B – Imagens e configuração dos servidores
 
 O cenário E usa o mesmo `Dockerfile` do cenário B, trocando apenas o `Caddyfile` por `Caddyfile.default`.
 
@@ -624,7 +624,7 @@ EXPOSE 8080
 CMD ["php", "artisan", "octane:frankenphp", "--workers=4", "--port=8080", "--host=0.0.0.0"]
 ```
 
-### APÊNDICE C — Scripts de carga do k6
+### APÊNDICE C – Scripts de carga do k6
 
 **k6/load.js**
 
@@ -888,7 +888,7 @@ export function testDb() {
 }
 ```
 
-### APÊNDICE D — Scripts de automação e análise
+### APÊNDICE D – Scripts de automação e análise
 
 **scripts/run-completo.sh**
 
@@ -1486,7 +1486,7 @@ if __name__ == "__main__":
     main()
 ```
 
-### APÊNDICE E — Controladores dos endpoints
+### APÊNDICE E – Controladores dos endpoints
 
 **apps/ci4-base/app/Controllers/BenchmarkController.php**
 
@@ -1658,40 +1658,40 @@ class BenchmarkController extends Controller
 }
 ```
 
-### APÊNDICE F — Resultados por execução
+### APÊNDICE F – Resultados por execução
 
-**Tabela F1 – Resultados de cada uma das 15 execuções de 15 minutos**
+**Tabela 6 – Resultados de cada uma das 15 execuções de 15 minutos**
 
 | Execução | RPS | Latência p50 (ms) | Latência p95 (ms) | Latência p99 (ms) | Erros (%) |
 |---|---|---|---|---|---|
-| A – execução 1 | 144.1 | 686.5 | 782.9 | 797.3 | 0.00 |
-| A – execução 2 | 143.2 | 688.2 | 787.5 | 802.7 | 0.00 |
-| A – execução 3 | 143.9 | 687.6 | 786.4 | 801.4 | 0.00 |
-| B – execução 1 | 154.7 | 605.3 | 710.4 | 792.6 | 0.00 |
-| B – execução 2 | 157.5 | 600.3 | 704.2 | 766.5 | 0.00 |
-| B – execução 3 | 156.3 | 602.5 | 715.5 | 789.5 | 0.00 |
-| C – execução 1 | 314.3 | 301.4 | 394.8 | 406.8 | 0.00 |
-| C – execução 2 | 314.9 | 301.2 | 394.1 | 405.4 | 0.00 |
-| C – execução 3 | 325.2 | 297.9 | 393.4 | 404.7 | 0.00 |
-| D – execução 1 | 350.4 | 287.6 | 375.2 | 397.0 | 0.00 |
-| D – execução 2 | 352.2 | 287.9 | 375.5 | 396.8 | 0.00 |
-| D – execução 3 | 351.3 | 287.2 | 373.2 | 396.5 | 0.00 |
-| E – execução 1 | 175.8 | 524.3 | 658.5 | 710.1 | 0.00 |
-| E – execução 2 | 173.6 | 525.4 | 675.8 | 742.1 | 0.00 |
-| E – execução 3 | 177.0 | 524.2 | 647.4 | 709.8 | 0.00 |
+| A – execução 1 | 144,1 | 686,5 | 782,9 | 797,3 | 0,00 |
+| A – execução 2 | 143,2 | 688,2 | 787,5 | 802,7 | 0,00 |
+| A – execução 3 | 143,9 | 687,6 | 786,4 | 801,4 | 0,00 |
+| B – execução 1 | 154,7 | 605,3 | 710,4 | 792,6 | 0,00 |
+| B – execução 2 | 157,5 | 600,3 | 704,2 | 766,5 | 0,00 |
+| B – execução 3 | 156,3 | 602,5 | 715,5 | 789,5 | 0,00 |
+| C – execução 1 | 314,3 | 301,4 | 394,8 | 406,8 | 0,00 |
+| C – execução 2 | 314,9 | 301,2 | 394,1 | 405,4 | 0,00 |
+| C – execução 3 | 325,2 | 297,9 | 393,4 | 404,7 | 0,00 |
+| D – execução 1 | 350,4 | 287,6 | 375,2 | 397,0 | 0,00 |
+| D – execução 2 | 352,2 | 287,9 | 375,5 | 396,8 | 0,00 |
+| D – execução 3 | 351,3 | 287,2 | 373,2 | 396,5 | 0,00 |
+| E – execução 1 | 175,8 | 524,3 | 658,5 | 710,1 | 0,00 |
+| E – execução 2 | 173,6 | 525,4 | 675,8 | 742,1 | 0,00 |
+| E – execução 3 | 177,0 | 524,2 | 647,4 | 709,8 | 0,00 |
 
-Fonte: elaborado pelo autor (2026). Nota: estatísticas sobre toda a execução, incluindo as rampas.
+Fonte: elaborado pelo próprio autor (2026). Nota: estatísticas sobre toda a execução, incluindo as rampas.
 
-**Tabela F2 – Resultados dos testes longos de 30 minutos de patamar**
+**Tabela 7 – Resultados dos testes longos de 30 minutos de patamar**
 
 | Teste | RPS | Latência p50 (ms) | Latência p95 (ms) | Latência p99 (ms) | Erros (%) |
 |---|---|---|---|---|---|
-| C – teste longo (30 min) | 310.1 | 306.3 | 396.1 | 406.7 | 0.00 |
-| D – teste longo (30 min) | 346.8 | 293.9 | 376.5 | 397.0 | 0.00 |
+| C – teste longo (30 min) | 310,1 | 306,3 | 396,1 | 406,7 | 0,00 |
+| D – teste longo (30 min) | 346,8 | 293,9 | 376,5 | 397,0 | 0,00 |
 
-Fonte: elaborado pelo autor (2026).
+Fonte: elaborado pelo próprio autor (2026).
 
-### APÊNDICE G — Ambiente de execução
+### APÊNDICE G – Ambiente de execução
 
 Saída dos comandos de inspeção do hospedeiro, registrada pelo autor antes da coleta.
 

@@ -36,7 +36,7 @@ function bodyParagraph(text) {
   return new Paragraph({
     children: inlineRuns(text),
     alignment: AlignmentType.JUSTIFIED,
-    indent: { firstLine: cm(2) },
+    indent: { firstLine: cm(1.25) }, // Diretrizes UEMA: recuo de 1,25 cm
     spacing: { line: 360, lineRule: "auto" },
   });
 }
@@ -68,15 +68,18 @@ function h3(text) {
 
 function quadroTitulo(text) {
   return new Paragraph({
-    children: [run(text, { bold: true, size: SIZE_SMALL })],
-    spacing: { before: 240, after: 80 },
+    children: [run(text)], // legenda: 12 pt, à esquerda, espaço simples (Diretrizes UEMA)
+    alignment: AlignmentType.LEFT,
+    keepNext: true,
+    spacing: { before: 240, after: 120, line: 240, lineRule: "auto" },
   });
 }
 
 function fonteParagraph(text) {
   return new Paragraph({
-    children: [run(text, { size: SIZE_SMALL })],
-    spacing: { after: 240 },
+    children: [run(text, { size: SIZE_SMALL })], // fonte: 10 pt, espaço simples, sem URL
+    alignment: AlignmentType.LEFT,
+    spacing: { after: 240, line: 240, lineRule: "auto" },
   });
 }
 

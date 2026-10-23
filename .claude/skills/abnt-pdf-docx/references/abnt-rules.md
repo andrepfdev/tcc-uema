@@ -1,3 +1,6 @@
+> **UEMA/TCC?** Para a monografia da UEMA use a skill `tcc-uema-formatacao` (Diretrizes + Modelo oficiais, com auditor).
+> Onde este arquivo divergir das Diretrizes da UEMA, valem as Diretrizes (recuo 1,25 cm, legenda 12 pt, bordas de tabela).
+
 # Regras ABNT usadas nesta skill
 
 Extraídas do **Manual para Normalização de Trabalhos Acadêmicos da UEMA** (5ª ed., 2024,
@@ -15,7 +18,7 @@ Use os valores abaixo como *default* razoável quando não houver manual especí
 - Fonte: tamanho **12** para o texto corrido (Times New Roman ou Arial — mantenha uma só
   em todo o documento). Tamanho **10** para: citações com mais de 3 linhas, notas de
   rodapé, paginação, ficha catalográfica, legendas/fontes de ilustrações e tabelas.
-- Parágrafo: recuo de primeira linha de **2 cm** a partir da margem esquerda.
+- Parágrafo: recuo de primeira linha de **1,25 cm** (Diretrizes da UEMA; a NBR genérica admite 1,25 a 2 cm).
 - Espaçamento: **1,5** entre linhas no texto corrido. Espaçamento **simples** em:
   citações longas, notas, referências (e separadas entre si por uma linha em branco
   simples), natureza do trabalho/objetivo na folha de rosto, legendas, ficha catalográfica.
@@ -84,10 +87,11 @@ Mesmos elementos do título, **mais**:
   para especificações, cronogramas, comparativos — praticamente tudo em trabalhos de TI
   e negócios). "Tabela" = dados estatísticos, tradicionalmente sem bordas verticais.
 - Identificação/legenda **acima**, com o rótulo (Quadro N / Tabela N), travessão e
-  título, fonte 10, alinhado à esquerda (não centralizado, apesar de alguns modelos
+  título, **fonte 12, espaço simples**, alinhado à esquerda (não centralizado, apesar de alguns modelos
   antigos centralizarem — siga o manual local se divergir).
-- **Fonte obrigatória abaixo**, mesmo quando é produção própria: "Fonte: elaborado
-  pelos autores (ano)." Fonte 10.
+- **Fonte obrigatória abaixo** (fonte 10, espaço simples), mesmo quando é produção própria: "Fonte: elaborado
+  pelo próprio autor (ano)." **Nunca endereço eletrônico como fonte** (URL só nas Referências).
+- **Tabela (IBGE)**: bordas laterais **abertas** (só traços superior, sob o cabeçalho e inferior). **Quadro**: moldura fechada.
 - Devem ser citados no texto antes de aparecer ("...conforme o Quadro 1.") e inseridos
   o mais próximo possível do trecho referenciado.
 

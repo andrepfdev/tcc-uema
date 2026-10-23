@@ -6,11 +6,11 @@ A presente pesquisa caracteriza-se como um estudo experimental e quantitativo, d
 
 Foram avaliados quatro cenários principais, todos com o mesmo orçamento de recursos, de 1,0 CPU e 512 MB de RAM por cenário (no cenário A, dividido entre PHP-FPM, com 0,85 CPU e 448 MB, e Nginx, com 0,15 CPU e 64 MB), e um cenário complementar de sensibilidade:
 
-- **Cenário A (legado):** CodeIgniter 4.7.5 sobre PHP 8.3.35-FPM, com 4 processos estáticos, e Nginx 1.31.7 como servidor web.
-- **Cenário B (clássico moderno):** o mesmo aplicativo sobre FrankenPHP 1.13.0 em modo clássico, como substituto direto do PHP-FPM, com 4 *threads* PHP, número igual ao de processos do cenário A e de *workers* dos cenários C e D.
-- **Cenário C (vanguarda):** o mesmo aplicativo sobre FrankenPHP em modo Worker, com 4 *workers* e o suporte nativo do CodeIgniter 4.7 ao modo Worker (arquivo `public/frankenphp-worker.php`, gerado pelo comando `php spark worker:install` do próprio *framework*).
-- **Cenário D (referência):** Laravel 13.36.0 com Laravel Octane 2.22.0 sobre FrankenPHP, com 4 *workers*.
-- **Cenário E (sensibilidade):** idêntico ao B, porém com o número padrão de *threads* do FrankenPHP, sem a diretiva `num_threads`. Foi incluído para verificar se o resultado do modo clássico depende dessa configuração.
+a) **Cenário A (legado):** CodeIgniter 4.7.5 sobre PHP 8.3.35-FPM, com 4 processos estáticos, e Nginx 1.31.7 como servidor web;
+b) **Cenário B (clássico moderno):** o mesmo aplicativo sobre FrankenPHP 1.13.0 em modo clássico, como substituto direto do PHP-FPM, com 4 *threads* PHP, número igual ao de processos do cenário A e de *workers* dos cenários C e D;
+c) **Cenário C (vanguarda):** o mesmo aplicativo sobre FrankenPHP em modo Worker, com 4 *workers* e o suporte nativo do CodeIgniter 4.7 ao modo Worker (arquivo `public/frankenphp-worker.php`, gerado pelo comando `php spark worker:install` do próprio *framework*);
+d) **Cenário D (referência):** Laravel 13.36.0 com Laravel Octane 2.22.0 sobre FrankenPHP, com 4 *workers*;
+e) **Cenário E (sensibilidade):** idêntico ao B, porém com o número padrão de *threads* do FrankenPHP, sem a diretiva `num_threads`. Foi incluído para verificar se o resultado do modo clássico depende dessa configuração.
 
 Todas as imagens de aplicação e de servidor web dos cenários A a E têm a mesma base, Debian 13 (*trixie*), com a mesma versão da biblioteca C (glibc 2.41), e o mesmo PHP 8.3.35, o que evita que diferenças de sistema operacional contaminem a comparação. A única diferença de compilação é inerente às arquiteturas: o PHP do FrankenPHP é compilado em modo *thread-safe* (ZTS), exigido por ele, e o do PHP-FPM em modo *non-thread-safe* (NTS). As imagens e os pacotes foram fixados por versão e por *digest*. Todos usam OPcache com a mesma configuração e o mesmo banco PostgreSQL 16 (contêiner separado, com 0,5 CPU e 256 MB, fora do orçamento dos cenários e idêntico em todos eles).
 
