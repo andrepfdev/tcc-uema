@@ -486,7 +486,7 @@ EXPOSE 8080
 
 ```
 {
-    # FrankenPHP modo Classic — configuração PADRÃO de threads (sensibilidade; ~2x núcleos do hospedeiro)
+    # FrankenPHP modo Classic — configuração PADRÃO de threads (sensibilidade; 2x os núcleos de CPU visíveis: 2 threads com o limite de 1,0 CPU)
     # Cada request inicia um novo contexto PHP (equivalente ao PHP-FPM)
     frankenphp
     order php_server before file_server

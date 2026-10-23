@@ -6,6 +6,8 @@ BRUNST, Holger et al. **First Experiences in Performance Benchmarking with the N
 
 CODEIGNITER FOUNDATION. **CodeIgniter 4 User Guide**. 2024. Disponível em: https://codeigniter.com/user_guide/. Acesso em: 19 out. 2026.
 
+DHANISWARA, Abiyoga; KUSUMASARI, Tien Fabrianti; ALAM, Ekky Novriza. Performance Evaluation of Laravel Application Deployment on Docker. In: INTERNATIONAL CONFERENCE ON INFORMATION TECHNOLOGY AND COMPUTING (ICITCOM), 2025, [S. l.]. **Proceedings** [...]. [S. l.]: IEEE, 2025. p. 170-175. DOI: https://doi.org/10.1109/ICITCOM66635.2025.11265204.
+
 DUNGLAS, Kévin. **FrankenPHP: The Modern Application Server for PHP**. LesTilleuls.coop, 2024. Disponível em: https://frankenphp.dev/docs/. Acesso em: 19 out. 2026.
 
 GRAFANA LABS. **k6 Documentation: Load Testing for Engineering Teams**. 2024. Disponível em: https://grafana.com/docs/k6/latest/using-k6/metrics/. Acesso em: 19 out. 2026.
