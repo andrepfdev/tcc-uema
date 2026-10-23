@@ -30,8 +30,8 @@ ir também como resumo estendido (duplicidade desclassifica); por isso não há 
    `ACM-Reference-Format.bst` do evento). Compilador pdfLaTeX; arquivo principal `cotb2027-cego.tex`.
 3. Conferir **≤ 6 páginas**. Baixar o PDF e submeter no JEMS. Repetir com `cotb2027-final.tex` só após o aceite.
 
-A prévia local (compilador antigo, sem as opções de idioma do template) deu 4 páginas; o PDF oficial deve sair
-parecido, mas **confira no Overleaf**.
+A prévia local (Tectonic, `acmart` antigo, sem as opções de idioma do template) dá 5 páginas (23/out/2026, com Dhaniswara et al.); o PDF oficial deve sair
+parecido, mas **confira no Overleaf** (limite: 6).
 
 ## Pendências do autor
 - Final: endereço do campus e e-mail institucional (campos `[...]` em `gerar.py`) e agradecimentos.
