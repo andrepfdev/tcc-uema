@@ -35,7 +35,9 @@ parecido, mas **confira no Overleaf** (limite: 6).
 
 **Posição das figuras:** as três figuras usam `[H]` (pacote `float`, acrescentado ao preâmbulo ao lado dos pacotes do modelo), para que fiquem
 entre parágrafos, logo depois do texto que as cita, e nunca no meio de um parágrafo. O modelo oficial usa `[htb]`, que deixa o LaTeX adiar a figura
-e pode interromper um parágrafo que atravessa colunas. Se o Overleaf deixar um vazio grande no pé de uma coluna, reordene o fonte em `corpo.tex`.
+e pode interromper um parágrafo que atravessa colunas. Para que o espaço entre parágrafos, títulos, tabelas e figuras fique uniforme, o preâmbulo usa `\raggedbottom` e separações fixas de 8 pt
+(`\intextsep`, `\floatsep`, `\textfloatsep`); sem isso, o `\flushbottom` da classe estica esses espaços para alinhar o pé das colunas.
+Se o Overleaf deixar um vazio grande no pé de uma coluna, reordene o fonte em `corpo.tex`.
 
 ## Pendências do autor
 - Final: endereço do campus e e-mail institucional (campos `[...]` em `gerar.py`) e agradecimentos.

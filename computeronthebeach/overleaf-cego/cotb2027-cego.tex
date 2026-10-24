@@ -10,6 +10,7 @@
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{graphicx}
+\usepackage{float}
 \settopmatter{printccs=false, printacmref=false}
 \renewcommand\footnotetextcopyrightpermission[1]{}
 
@@ -66,7 +67,7 @@
 
 
 \begin{abstract}
-Persistent in-memory execution removes the per-request framework bootstrap of traditional PHP, but CodeIgniter 4 only gained native support for the FrankenPHP Worker mode in version 4.7. This paper measures, under the same resource budget (1.0 CPU, 512~MB), the capacity, latency and CPU/memory use of CodeIgniter 4 under PHP-FPM, classic FrankenPHP and FrankenPHP Worker mode, with Laravel Octane as a reference, all on the same Debian 13 base image, using k6, Prometheus and Docker. Throughput was measured under a closed-loop workload with 100 virtual users (five 15-minute runs per scenario, 10-minute plateau) and latency below saturation in an open-loop test at a fixed 100 requests per second (three runs). At the plateau, mean throughput was 143.6 requests per second (PHP-FPM), 155.7 (classic FrankenPHP), 304.4 (CodeIgniter 4 Worker) and 337.8 (Laravel Octane), with no errors. Worker mode raised CodeIgniter 4 throughput by 112.1\% over PHP-FPM (95.5\% over classic FrankenPHP) and cut p95 latency at 100 requests per second by 57\% (15.3 to 6.6~ms), at the cost of about 46~MiB of additional memory; memory stayed stable in 30-minute tests. The PHP-FPM comparison involves different server architectures, and the gain combines persistent execution and database connection reuse, which the experiment does not separate, although per-endpoint data suggest the connection dominates the latency reduction. Classic mode brought a modest throughput gain (8.5\%), but no measurable latency improvement below saturation. In this environment, Worker mode pays off for CodeIgniter 4, approaching Laravel Octane.
+Persistent in-memory execution removes the per-request framework bootstrap of traditional PHP, but CodeIgniter 4 only gained native support for the FrankenPHP Worker mode in version 4.7. This paper measures, under the same resource budget (1.0 CPU, 512~MB), the capacity, latency and CPU/memory use of CodeIgniter 4 under PHP-FPM, classic FrankenPHP and FrankenPHP Worker mode, with Laravel Octane as a reference, all on the same Debian 13 base image, using k6, Prometheus and Docker. Throughput was measured under a closed-loop workload with 100 virtual users (five 15-minute runs per scenario, 10-minute plateau) and latency below saturation in an open-loop test at a fixed 100 requests per second (three runs). At the plateau, mean throughput was 143.6 requests per second (PHP-FPM), 155.7 (classic FrankenPHP), 304.4 (CodeIgniter 4 Worker) and 337.8 (Laravel Octane), with no errors. Worker mode raised CodeIgniter 4 throughput by 112.1\% over PHP-FPM (95.5\% over classic FrankenPHP) and cut p95 latency at 100 requests per second by 57\% (15.3 to 6.6~ms), at the cost of about 46~MiB of additional memory; memory stayed stable in 30-minute tests. The PHP-FPM comparison involves different server architectures, and the gain combines persistent execution and database connection reuse, which the experiment does not separate, although per-endpoint data suggest the connection dominates the latency reduction. Classic mode brought a modest throughput gain (8.5\%), but no measurable latency improvement below saturation. Because Worker mode keeps the framework and the database connection alive between requests, the bootstrap cost is paid once rather than on every request, which matters most when the CPU is the bottleneck, as it was here; replacing only the web server leaves that repeated work in place. Laravel Octane, designed for this model, remains ahead, so the native CodeIgniter 4 support narrows the gap without closing it. Hence, for teams that maintain CodeIgniter 4 applications under CPU constraints, adopting Worker mode is a sound alternative to migrating to another framework, provided state leakage between requests is controlled; the conclusion holds for this environment and workload, not for every application.
 \end{abstract}
 \keywords{CodeIgniter 4, FrankenPHP, Worker mode, performance benchmarking, PHP}
 
@@ -136,7 +137,7 @@ A Tabela~\ref{tab:global} e a Figura~\ref{fig:rps} resumem a vazão observada co
 \end{table}
 
 \begin{table}[htb]
-  \caption{Comparações em modelo fechado ($n=5$; B--A indica B contra A): variação percentual, IC95\% da diferença (Welch) e $p$ do Welch ajustado por Holm (seis comparações por métrica).}
+  \caption{Comparações em modelo fechado ($n=5$): variação percentual, IC95\% da diferença (Welch) e $p$ do Welch ajustado por Holm (seis comparações por métrica).}
   \label{tab:pares}
   \centering
   \scriptsize
@@ -145,21 +146,21 @@ A Tabela~\ref{tab:global} e a Figura~\ref{fig:rps} resumem a vazão observada co
     \toprule
     & \multicolumn{3}{c}{\textbf{RPS}} & \multicolumn{3}{c}{\textbf{p95}} \\
     \cmidrule(lr){2-4}\cmidrule(lr){5-7}
-    \textbf{Par} & \textbf{Var. (\%)} & \textbf{IC95\%} & \textbf{$p$} & \textbf{Var. (\%)} & \textbf{IC95\% (ms)} & \textbf{$p$} \\
+    \textbf{Comparação} & \textbf{Var. (\%)} & \textbf{IC95\%} & \textbf{$p$} & \textbf{Var. (\%)} & \textbf{IC95\% (ms)} & \textbf{$p$} \\
     \midrule
-    B--A & +8,5   & [+10,5; +13,8]   & $<0,001$ & $-4,8$  & [$-68,0$; $-6,9$]   & 0,027 \\
-    E--B & +13,3  & [+18,9; +22,6]   & $<0,001$ & $-9,6$  & [$-102,1$; $-41,8$] & 0,003 \\
-    C--A & +112,1 & [+158,8; +162,9] & $<0,001$ & $-49,6$ & [$-394,4$; $-388,3$] & $<0,001$ \\
-    C--B & +95,5  & [+146,5; +150,9] & $<0,001$ & $-47,1$ & [$-384,5$; $-323,3$] & $<0,001$ \\
-    C--E & +72,5  & [+125,8; +130,2] & $<0,001$ & $-41,5$ & [$-295,2$; $-268,7$] & $<0,001$ \\
-    D--C & +11,0  & [+31,1; +35,6]   & $<0,001$ & $-3,6$  & [$-15,5$; $-13,4$]  & $<0,001$ \\
+    B vs A & +8,5   & [+10,5; +13,8]   & $<0,001$ & $-4,8$  & [$-68,0$; $-6,9$]   & 0,027 \\
+    E vs B & +13,3  & [+18,9; +22,6]   & $<0,001$ & $-9,6$  & [$-102,1$; $-41,8$] & 0,003 \\
+    C vs A & +112,1 & [+158,8; +162,9] & $<0,001$ & $-49,6$ & [$-394,4$; $-388,3$] & $<0,001$ \\
+    C vs B & +95,5  & [+146,5; +150,9] & $<0,001$ & $-47,1$ & [$-384,5$; $-323,3$] & $<0,001$ \\
+    C vs E & +72,5  & [+125,8; +130,2] & $<0,001$ & $-41,5$ & [$-295,2$; $-268,7$] & $<0,001$ \\
+    D vs C & +11,0  & [+31,1; +35,6]   & $<0,001$ & $-3,6$  & [$-15,5$; $-13,4$]  & $<0,001$ \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.85\linewidth]{figuras/fig_rps.png}
+  \includegraphics[width=0.75\linewidth]{figuras/fig_rps.png}
   \caption{Vazão média por cenário em modelo fechado (patamar), com IC95\% de 5 execuções.}
   \label{fig:rps}
 \end{figure}
@@ -188,7 +189,7 @@ No modelo fechado, o p95 de C é 49,6\% menor que o de A (e o de B, 4,8\% menor 
 
 A redução de latência concentra-se no \texttt{/db}: sua latência média cai de 14,6~ms (A) para 3,3~ms (C), ao passo que \texttt{/health}, que não acessa o banco, cai de 3,2 para 2,8~ms, \texttt{/memory}, de 3,2 para 2,8~ms e \texttt{/compute}, de 5,8 para 5,7~ms (Figura~\ref{fig:lat}). A CPU para atender os mesmos 100 req/s também cai de 55,9\% para 35,5\%.
 
-\begin{figure}[t]
+\begin{figure}[H]
   \centering
   \includegraphics[width=0.95\linewidth]{figuras/fig_latencia_100rps.png}
   \caption{Latência p95 por \textit{endpoint} a 100 req/s (barras: IC95\% de 3 execuções).}
@@ -213,7 +214,7 @@ O diagnóstico de persistência (Tabela~\ref{tab:estado}) mostra que C e D prese
   \end{tabular}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}[H]
   \centering
   \includegraphics[width=0.85\linewidth]{figuras/fig_ram_longo.png}
   \caption{RAM dos contêineres C e D durante 30 minutos de patamar.}

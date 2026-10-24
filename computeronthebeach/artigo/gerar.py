@@ -24,6 +24,8 @@ PREAMBULO = r"""
 \usepackage{multirow}
 \usepackage{graphicx}
 \usepackage{float}
+\raggedbottom
+\setlength{\intextsep}{8pt}\setlength{\floatsep}{8pt}\setlength{\textfloatsep}{8pt}
 \settopmatter{printccs=false, printacmref=false}
 \renewcommand\footnotetextcopyrightpermission[1]{}
 
