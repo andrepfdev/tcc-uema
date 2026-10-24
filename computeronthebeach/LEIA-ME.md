@@ -33,6 +33,10 @@ ir também como resumo estendido (duplicidade desclassifica); por isso não há 
 A prévia local (Tectonic, `acmart` antigo, sem as opções de idioma do template) dá 5 páginas (23/out/2026, com Dhaniswara et al.); o PDF oficial deve sair
 parecido, mas **confira no Overleaf** (limite: 6).
 
+**Posição das figuras:** as três figuras usam `[H]` (pacote `float`, acrescentado ao preâmbulo ao lado dos pacotes do modelo), para que fiquem
+entre parágrafos, logo depois do texto que as cita, e nunca no meio de um parágrafo. O modelo oficial usa `[htb]`, que deixa o LaTeX adiar a figura
+e pode interromper um parágrafo que atravessa colunas. Se o Overleaf deixar um vazio grande no pé de uma coluna, reordene o fonte em `corpo.tex`.
+
 ## Pendências do autor
 - Final: endereço do campus e e-mail institucional (campos `[...]` em `gerar.py`) e agradecimentos.
 - Declaração de IA (`declaracao-ia.tex`): conferir se descreve fielmente o uso do Claude Code.
